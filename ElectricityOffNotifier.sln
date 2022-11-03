@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{966EBEA7-5C95-4F15-A2B2-81E9DE0B3EA4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElectricityOffNotifier.AppHost", "src\ElectricityOffNotifier.AppHost\ElectricityOffNotifier.AppHost.csproj", "{6C4EE31B-4570-49D1-B864-D5A74E62DC45}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElectricityOffNotifier.Data", "src\ElectricityOffNotifier.Data\ElectricityOffNotifier.Data.csproj", "{D9B0CF3F-DC67-4CB0-91B2-170C0FCA42EA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6C4EE31B-4570-49D1-B864-D5A74E62DC45} = {966EBEA7-5C95-4F15-A2B2-81E9DE0B3EA4}
+		{D9B0CF3F-DC67-4CB0-91B2-170C0FCA42EA} = {966EBEA7-5C95-4F15-A2B2-81E9DE0B3EA4}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6C4EE31B-4570-49D1-B864-D5A74E62DC45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C4EE31B-4570-49D1-B864-D5A74E62DC45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C4EE31B-4570-49D1-B864-D5A74E62DC45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C4EE31B-4570-49D1-B864-D5A74E62DC45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9B0CF3F-DC67-4CB0-91B2-170C0FCA42EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9B0CF3F-DC67-4CB0-91B2-170C0FCA42EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9B0CF3F-DC67-4CB0-91B2-170C0FCA42EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9B0CF3F-DC67-4CB0-91B2-170C0FCA42EA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
