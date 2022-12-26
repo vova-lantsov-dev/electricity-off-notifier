@@ -3,12 +3,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ElectricityOffNotifier.AppHost.Services;
 
-public sealed class BackgroundStartupService : IHostedService
+public sealed class HangfireStartupService : IHostedService
 {
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly IElectricityCheckerManager _checkerManager;
 
-	public BackgroundStartupService(
+	public HangfireStartupService(
 		IServiceScopeFactory scopeFactory,
 		IElectricityCheckerManager checkerManager)
 	{
