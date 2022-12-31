@@ -9,17 +9,21 @@ namespace ElectricityOffNotifier.AppHost.Auth;
 internal sealed class ApiKeyProvider : IApiKeyProvider
 {
 	private readonly ElectricityDbContext _context;
-	
-	public ApiKeyProvider(ElectricityDbContext context)
+	private readonly IConfiguration _configuration;
+
+	public ApiKeyProvider(ElectricityDbContext context, IConfiguration configuration)
 	{
 		_context = context;
+		_configuration = configuration;
 	}
 
 	public async Task<IApiKey?> ProvideAsync(string key)
 	{
+		byte[] accessTokenHash = key.ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]);
+		
 		Producer? producer = await _context.Producers
 			.AsNoTracking()
-			.FirstOrDefaultAsync(p => p.AccessToken == key);
+			.FirstOrDefaultAsync(p => p.AccessTokenHash == accessTokenHash);
 
 		if (producer == null)
 			return null;

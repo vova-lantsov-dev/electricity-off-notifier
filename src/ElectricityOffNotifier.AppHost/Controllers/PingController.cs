@@ -1,9 +1,9 @@
 ﻿using System.Security.Claims;
-using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectricityOffNotifier.AppHost.Controllers;
 
@@ -22,12 +22,24 @@ public sealed class PingController : ControllerBase
 	[HttpPost]
 	public async Task<ActionResult> Ping()
 	{
-		int checkerId = int.Parse(User.FindFirstValue(CustomClaimTypes.CheckerId));
+		int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+		var producer = await _context.Producers
+			.Select(c => new Producer {Id = c.Id, IsEnabled = c.IsEnabled})
+			.FirstAsync(c => c.Id == producerId);
+
+		if (!producer.IsEnabled)
+		{
+			return StatusCode(403, new
+			{
+				reason = "Your API key is disabled. Please contact @vova_lantsov to enable it."
+			});
+		}
 
 		var checkerEntry = new CheckerEntry
 		{
 			DateTime = DateTime.UtcNow,
-			CheckerId = checkerId
+			CheckerId = producer.CheckerId
 		};
 		_context.CheckerEntries.Add(checkerEntry);
 	

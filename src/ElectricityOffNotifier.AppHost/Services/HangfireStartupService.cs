@@ -22,7 +22,6 @@ public sealed class HangfireStartupService : IHostedService
 		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
 		var checkers = await dbContext.Checkers
-			.Where(c => c.IsEnabled)
 			.Select(c => new { c.Id })
 			.ToListAsync(cancellationToken: cancellationToken);
 
