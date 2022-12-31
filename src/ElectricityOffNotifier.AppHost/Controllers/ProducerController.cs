@@ -28,6 +28,7 @@ public sealed class ProducerController : ControllerBase
 		_configuration = configuration;
 	}
 	
+	[HttpPost]
 	public async Task<ActionResult> Register([FromBody] ProducerRegisterModel model, CancellationToken cancellationToken)
 	{
 		if (!await _context.Addresses.AnyAsync(a => a.Id == model.AddressId, cancellationToken))

@@ -12,6 +12,11 @@ public sealed class Subscriber
 	[Column("telegram_id")]
 	public long TelegramId { get; set; }
 	
+	[Column("producer_id")]
+	public int ProducerId { get; set; }
+	[ForeignKey(nameof(ProducerId))]
+	public Producer Producer { get; set; }
+	
 	[Column("checker_id")]
 	public int CheckerId { get; set; }
 	[ForeignKey(nameof(CheckerId))]

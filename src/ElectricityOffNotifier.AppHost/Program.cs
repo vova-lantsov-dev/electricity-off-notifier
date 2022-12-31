@@ -5,6 +5,8 @@ using ElectricityOffNotifier.AppHost.Services;
 using ElectricityOffNotifier.Data;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.EntityFrameworkCore;
+using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,8 @@ builder.Configuration.AddJsonFile("setup.json", optional: true, reloadOnChange: 
 	.AddJsonFile($"setup.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
 
 // Configure services
+builder.Services.AddControllers();
+
 string hangfireConnStr = builder.Configuration.GetConnectionString("HangfireConnectionString");
 builder.Services.AddHangfire(configuration => configuration
 	.SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
@@ -30,6 +34,12 @@ builder.Services.AddAuthentication(ApiKeyDefaults.AuthenticationScheme)
 		options.IgnoreAuthenticationIfAllowAnonymous = true;
 	});
 
+builder.Services.AddSingleton<ITelegramBotClient>(provider =>
+{
+	var configuration = provider.GetRequiredService<IConfiguration>();
+	return new TelegramBotClient(configuration["Bot:Token"]);
+});
+
 builder.Services.AddOptions<SetupOptions>()
 	.BindConfiguration("Setup")
 	.ValidateDataAnnotations();
@@ -42,10 +52,19 @@ builder.Services.AddHostedService<HangfireStartupService>();
 // Build and run the application
 var app = builder.Build();
 
+await using (AsyncServiceScope scope = app.Services.CreateAsyncScope())
+{
+	var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
+
+	if ((await dbContext.Database.GetPendingMigrationsAsync()).Any())
+	{
+		await dbContext.Database.MigrateAsync();
+	}
+}
+
 app.UseRouting();
 
 app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapControllers();
 app.MapHangfireDashboard(new DashboardOptions { IsReadOnlyFunc = _ => true });

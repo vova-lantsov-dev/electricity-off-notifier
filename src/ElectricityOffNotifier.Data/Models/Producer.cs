@@ -18,4 +18,6 @@ public sealed class Producer
 	public int CheckerId { get; set; }
 	[ForeignKey(nameof(CheckerId))]
 	public Checker Checker { get; set; }
+	
+	public List<Subscriber> Subscribers { get; set; }
 }
