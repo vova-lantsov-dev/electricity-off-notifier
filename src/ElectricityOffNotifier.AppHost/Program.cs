@@ -33,6 +33,7 @@ builder.Services.AddAuthentication(ApiKeyDefaults.AuthenticationScheme)
 		options.SuppressWWWAuthenticateHeader = true;
 		options.IgnoreAuthenticationIfAllowAnonymous = true;
 	});
+builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<ITelegramBotClient>(provider =>
 {
@@ -65,6 +66,7 @@ await using (AsyncServiceScope scope = app.Services.CreateAsyncScope())
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapHangfireDashboard(new DashboardOptions { IsReadOnlyFunc = _ => true });

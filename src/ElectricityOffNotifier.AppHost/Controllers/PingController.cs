@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -23,6 +24,7 @@ public sealed class PingController : ControllerBase
 	public async Task<ActionResult> Ping()
 	{
 		int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+		int checkerId = int.Parse(User.FindFirstValue(CustomClaimTypes.CheckerId));
 
 		var producer = await _context.Producers
 			.Select(c => new Producer {Id = c.Id, IsEnabled = c.IsEnabled})
@@ -39,7 +41,7 @@ public sealed class PingController : ControllerBase
 		var checkerEntry = new CheckerEntry
 		{
 			DateTime = DateTime.UtcNow,
-			CheckerId = producer.CheckerId
+			CheckerId = checkerId
 		};
 		_context.CheckerEntries.Add(checkerEntry);
 	

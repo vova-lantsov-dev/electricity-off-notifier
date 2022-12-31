@@ -38,6 +38,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			.AsNoTracking()
 			.Include(c => c.Entries.OrderByDescending(e => e.DateTime).Take(1))
 			.Include(c => c.Address)
+			.ThenInclude(a => a.City)
 			.FirstAsync(c => c.Id == checkerId, cancellationToken);
 		
 		if (checker.Entries.Count < 1)
@@ -73,7 +74,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		else
 		{
 			// Otherwise, if the electricity is up again, check if we need to notify about that
-			if (lastNotification is { IsUpNotification: false })
+			if (lastNotification is not { IsUpNotification: true })
 			{
 				await LoadSubscribersAsync();
 				await SetLastNotificationAsync(dbContext, checkerId, true, cancellationToken);

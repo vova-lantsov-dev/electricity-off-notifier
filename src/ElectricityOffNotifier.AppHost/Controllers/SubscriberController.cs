@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Globalization;
+using System.Security.Claims;
 using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.AppHost.Models;
 using ElectricityOffNotifier.Data;
@@ -6,6 +7,7 @@ using ElectricityOffNotifier.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TimeZoneConverter;
 
 namespace ElectricityOffNotifier.AppHost.Controllers;
 
@@ -28,6 +30,27 @@ public sealed class SubscriberController : ControllerBase
         int checkerId = int.Parse(User.FindFirstValue(CustomClaimTypes.CheckerId));
         int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
+        model.TimeZone ??= "Europe/Kiev";
+        model.Culture ??= "uk-UA";
+        
+        if (!TZConvert.TryGetTimeZoneInfo(model.TimeZone, out _))
+        {
+            ModelState.AddModelError(nameof(model.TimeZone),
+                "Invalid time zone name. Consider using any valid time zone in IANA or Windows format.");
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            _ = CultureInfo.GetCultureInfo(model.Culture);
+        }
+        catch
+        {
+            ModelState.AddModelError(nameof(model.Culture),
+                "Culture name is not valid. Consider using 'uk-UA' or any similar culture.");
+            return BadRequest(ModelState);
+        }
+
         if (await _context.Subscribers.AnyAsync(s => s.CheckerId == checkerId && s.TelegramId == model.TelegramId,
                 cancellationToken))
         {
@@ -40,7 +63,9 @@ public sealed class SubscriberController : ControllerBase
         {
             CheckerId = checkerId,
             TelegramId = model.TelegramId,
-            ProducerId = producerId
+            ProducerId = producerId,
+            Culture = model.Culture,
+            TimeZone = model.TimeZone
         };
         _context.Subscribers.Add(subscriber);
 
@@ -52,7 +77,7 @@ public sealed class SubscriberController : ControllerBase
         };
     }
 
-    [HttpDelete("{subscriberId:int:required}")]
+    [HttpDelete("{subscriberId:int:min(1):required}")]
     public async Task<ActionResult> Remove(int subscriberId, CancellationToken cancellationToken)
     {
         Subscriber? subscriber = await _context.Subscribers
