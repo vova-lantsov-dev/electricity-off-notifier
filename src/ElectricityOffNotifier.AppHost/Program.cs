@@ -1,13 +1,10 @@
-using System.Security.Claims;
 using AspNetCore.Authentication.ApiKey;
 using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.AppHost.Options;
 using ElectricityOffNotifier.AppHost.Services;
 using ElectricityOffNotifier.Data;
-using ElectricityOffNotifier.Data.Models;
 using Hangfire;
 using Hangfire.PostgreSql;
-using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,20 +46,6 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapPost("/v1/ping", [Authorize] async (HttpContext context, ElectricityDbContext dbContext) =>
-{
-	int checkerId = int.Parse(context.User.FindFirstValue(CustomClaimTypes.CheckerId));
-
-	var checkerEntry = new CheckerEntry
-	{
-		DateTime = DateTime.UtcNow,
-		CheckerId = checkerId
-	};
-	dbContext.CheckerEntries.Add(checkerEntry);
-	
-	await dbContext.SaveChangesAsync();
-});
 
 app.MapControllers();
 app.MapHangfireDashboard(new DashboardOptions { IsReadOnlyFunc = _ => true });
