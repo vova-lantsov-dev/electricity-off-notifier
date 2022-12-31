@@ -41,9 +41,12 @@ public sealed class SetupStartupService : IHostedService
 					});
 				}
 			}
-			
-			context.Cities.AddRange(citiesToAdd);
-			await context.SaveChangesAsync(cancellationToken);
+
+			if (citiesToAdd.Count > 0)
+			{
+				context.Cities.AddRange(citiesToAdd);
+				await context.SaveChangesAsync(cancellationToken);
+			}
 		}
 	}
 

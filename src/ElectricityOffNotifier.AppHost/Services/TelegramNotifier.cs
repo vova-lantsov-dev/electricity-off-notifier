@@ -22,7 +22,7 @@ public sealed class TelegramNotifier : ITelegramNotifier
 	{
 		var builder = new StringBuilder();
 		AppendAddressBlockTo(builder, address);
-		builder.AppendFormat("Електроенергія відсутня починаючи з <b>{0}</b>",
+		builder.AppendFormat("Електропостачання відсутнє починаючи з <b>{0}</b>",
 			lastCheckerEntry.DateTime.ToString("g", UkrainianFormatProvider));
 
 		var messageToSend = builder.ToString();
@@ -34,7 +34,7 @@ public sealed class TelegramNotifier : ITelegramNotifier
 	{
 		var builder = new StringBuilder();
 		AppendAddressBlockTo(builder, address);
-		builder.AppendFormat("<b>Електроенергія відновлена!</b>\nВона була відсутня протягом {0}",
+		builder.AppendFormat("<b>Електропостачання відновлено!</b>\nБуло відсутнє починаючи з {0}",
 			(DateTime.UtcNow - downSince.DateTime).ToString("g", UkrainianFormatProvider));
 
 		var messageToSend = builder.ToString();

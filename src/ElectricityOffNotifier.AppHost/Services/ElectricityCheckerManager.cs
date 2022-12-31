@@ -51,13 +51,12 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 				.ToListAsync(cancellationToken);
 		}
 		
+		SentNotification? lastNotification =
+			await GetLastNotificationAsync(dbContext, checkerId, cancellationToken);
+		
 		if (DateTime.UtcNow - checker.Entries[0].DateTime > TimeSpan.FromMinutes(2d))
 		{
 			// If we got here - it seems like the electricity is down
-			
-			SentNotification? lastNotification =
-				await GetLastNotificationAsync(dbContext, checkerId, cancellationToken);
-
 			if (lastNotification is not { IsUpNotification: false })
 			{
 				await LoadSubscribersAsync();
@@ -74,10 +73,6 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		else
 		{
 			// Otherwise, if the electricity is up again, check if we need to notify about that
-
-			SentNotification? lastNotification =
-				await GetLastNotificationAsync(dbContext, checkerId, cancellationToken);
-			
 			if (lastNotification is { IsUpNotification: false })
 			{
 				await LoadSubscribersAsync();
