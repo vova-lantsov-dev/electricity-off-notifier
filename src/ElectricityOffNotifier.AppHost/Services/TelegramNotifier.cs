@@ -1,16 +1,19 @@
-﻿using System.Globalization;
+﻿using System.Collections.Concurrent;
+using System.Globalization;
 using System.Text;
 using ElectricityOffNotifier.Data.Models;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
+using TimeZoneConverter;
 
 namespace ElectricityOffNotifier.AppHost.Services;
 
 public sealed class TelegramNotifier : ITelegramNotifier
 {
 	private readonly ITelegramBotClient _botClient;
-
-	private static readonly IFormatProvider UkrainianFormatProvider = new CultureInfo("uk-UA");
+	
+	private static readonly ConcurrentDictionary<string, Lazy<TimeZoneInfo>> TimeZones = new();
+	private static readonly ConcurrentDictionary<string, Lazy<IFormatProvider>> Cultures = new();
 
 	public TelegramNotifier(ITelegramBotClient botClient)
 	{
@@ -20,10 +23,13 @@ public sealed class TelegramNotifier : ITelegramNotifier
 	public async Task NotifyElectricityIsDownAsync(CheckerEntry lastCheckerEntry, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken)
 	{
+		DateTime localTime = GetLocalTime(DateTime.UtcNow, subscriber.TimeZone);
+		IFormatProvider localCulture = GetCulture(subscriber.Culture);
+		
 		var builder = new StringBuilder();
 		AppendAddressBlockTo(builder, address);
-		builder.AppendFormat("Електропостачання відсутнє починаючи з <b>{0}</b>",
-			lastCheckerEntry.DateTime.ToString("g", UkrainianFormatProvider));
+		builder.AppendFormat("<b>Електропостачання відсутнє!</b> Час початку відключення: <b>{0}</b>",
+			localTime.ToString("g", localCulture));
 
 		var messageToSend = builder.ToString();
 		await SendMessageAsync(subscriber.TelegramId, messageToSend, cancellationToken);
@@ -32,10 +38,17 @@ public sealed class TelegramNotifier : ITelegramNotifier
 	public async Task NotifyElectricityIsUpAsync(CheckerEntry downSince, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken)
 	{
+		DateTime localTime = GetLocalTime(downSince.DateTime, subscriber.TimeZone);
+		IFormatProvider localCulture = GetCulture(subscriber.Culture);
+		
 		var builder = new StringBuilder();
 		AppendAddressBlockTo(builder, address);
-		builder.AppendFormat("<b>Електропостачання відновлено!</b>\nБуло відсутнє починаючи з {0}",
-			(DateTime.UtcNow - downSince.DateTime).ToString("g", UkrainianFormatProvider));
+		builder.AppendFormat("<b>Електропостачання відновлено!</b>\nБуло відсутнє з {0}\n",
+			localTime.ToString("g", localCulture));
+
+		TimeSpan downDuration = DateTime.UtcNow - downSince.DateTime;
+		builder.AppendFormat("Загальна тривалість відключення: {0} год. {1:D2} хв.",
+			(int) downDuration.TotalHours, downDuration.Minutes);
 
 		var messageToSend = builder.ToString();
 		await SendMessageAsync(subscriber.TelegramId, messageToSend, cancellationToken);
@@ -63,5 +76,22 @@ public sealed class TelegramNotifier : ITelegramNotifier
 		{
 			// silent
 		}
+	}
+
+	private static DateTime GetLocalTime(DateTime utcTime, string timeZone)
+	{
+		static Lazy<TimeZoneInfo> CreateTimeZoneFactory(string timeZone) =>
+			new(() => TZConvert.GetTimeZoneInfo(timeZone));
+
+		TimeZoneInfo tz = TimeZones.GetOrAdd(timeZone, CreateTimeZoneFactory).Value;
+
+		return TimeZoneInfo.ConvertTime(utcTime, tz);
+	}
+
+	private static IFormatProvider GetCulture(string cultureName)
+	{
+		return Cultures
+			.GetOrAdd(cultureName, c => new Lazy<IFormatProvider>(() => new CultureInfo(c)))
+			.Value;
 	}
 }
