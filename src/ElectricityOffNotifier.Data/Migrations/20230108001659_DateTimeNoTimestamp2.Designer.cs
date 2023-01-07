@@ -3,6 +3,7 @@ using System;
 using ElectricityOffNotifier.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ElectricityOffNotifier.Data.Migrations
 {
     [DbContext(typeof(ElectricityDbContext))]
-    partial class ElectricityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230108001659_DateTimeNoTimestamp2")]
+    partial class DateTimeNoTimestamp2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -9,7 +9,7 @@ public sealed class CheckerEntry
 	[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity), Column("id")]
 	public long Id { get; set; }
 	
-	[Column("date_time")]
+	[Column("date_time", TypeName = "timestamp")]
 	public DateTime DateTime { get; set; }
 	
 	[Column("checker_id")]
