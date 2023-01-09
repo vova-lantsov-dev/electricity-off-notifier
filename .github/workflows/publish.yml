@@ -31,6 +31,7 @@ jobs:
         REMOTE_USER: ${{ secrets.SSH_USER }}
         REMOTE_PORT: ${{ secrets.SSH_PORT }}
         TARGET: ${{ secrets.SSH_TARGET_DIR }}
+        EXCLUDE: "/.git/"
         SCRIPT_AFTER: |
           cd ${{ secrets.SSH_TARGET_DIR }}
           sudo docker-compose down
