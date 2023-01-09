@@ -34,5 +34,5 @@ jobs:
         EXCLUDE: "/.git/"
         SCRIPT_AFTER: |
           cd ${{ secrets.SSH_TARGET_DIR }}
-          sudo docker-compose down
-          sudo docker-compose up -d
+          sudo docker compose down
+          sudo docker compose up -d
