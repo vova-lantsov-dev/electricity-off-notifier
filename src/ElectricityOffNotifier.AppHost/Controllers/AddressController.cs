@@ -23,8 +23,8 @@ public sealed class AddressController : ControllerBase
 	{
 		return await _context.Addresses
 			.AsNoTracking()
-			.Where(a => EF.Functions.ILike(a.Street, model.Street) &&
-						EF.Functions.ILike(a.BuildingNo, model.BuildingNo) &&
+			.Where(a => EF.Functions.ILike(a.Street, $"%{model.Street}%") &&
+						EF.Functions.ILike(a.BuildingNo, $"%{model.BuildingNo}%") &&
 						a.CityId == model.CityId)
 			.Take(200)
 			.Select(a => new AddressModel
