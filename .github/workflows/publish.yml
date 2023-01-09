@@ -36,10 +36,10 @@ jobs:
           cd ${{ secrets.SSH_TARGET_DIR }}
           
           # Fill the environment variables
-          echo "Auth__SecretKey=${{ secrets.AUTH_SECRET_KEY }}" >> ".env"
-          echo "Bot__Token=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> ".env"
-          echo "ConnectionStrings__ElectricityConnectionString=${{ secrets.ELECTRICITY_CONNECTION_STRING }}" >> ".env"
-          echo "ConnectionStrings__HangfireConnectionString=${{ secrets.HANGFIRE_CONNECTION_STRING }}" >> ".env"
+          echo "Auth__SecretKey='${{ secrets.AUTH_SECRET_KEY }}'" > ".env"
+          echo "Bot__Token='${{ secrets.TELEGRAM_BOT_TOKEN }}'" >> ".env"
+          echo "ConnectionStrings__ElectricityConnectionString='${{ secrets.ELECTRICITY_CONNECTION_STRING }}'" >> ".env"
+          echo "ConnectionStrings__HangfireConnectionString='${{ secrets.HANGFIRE_CONNECTION_STRING }}'" >> ".env"
           
           sudo docker compose down
           sudo docker compose --env-file ".env" up -d
