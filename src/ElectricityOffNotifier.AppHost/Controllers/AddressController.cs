@@ -16,9 +16,8 @@ public sealed class AddressController : ControllerBase
 		_context = context;
 	}
 
-	[HttpGet("{cityId:int:required:min(1)}")]
+	[HttpGet]
 	public async Task<ActionResult<List<AddressModel>>> FindAddressesInCity(
-		int cityId,
 		[FromQuery] FindAddressesModel model,
 		CancellationToken cancellationToken)
 	{
@@ -26,7 +25,7 @@ public sealed class AddressController : ControllerBase
 			.AsNoTracking()
 			.Where(a => EF.Functions.ILike(a.Street, model.Street) &&
 						EF.Functions.ILike(a.BuildingNo, model.BuildingNo) &&
-						a.CityId == cityId)
+						a.CityId == model.CityId)
 			.Take(200)
 			.Select(a => new AddressModel
 			{
