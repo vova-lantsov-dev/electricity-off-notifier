@@ -9,6 +9,7 @@ x-host-config: &host_config
     - ASPNETCORE_ENVIRONMENT=Production
   ports:
     - "5083:80"
+  env_file: .env
 
 services:
   host:
