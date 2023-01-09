@@ -7,6 +7,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
+using Telegram.Bot.Polling;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,9 @@ builder.Services.AddOptions<SetupOptions>()
 	.BindConfiguration("Setup")
 	.ValidateDataAnnotations();
 builder.Services.AddHostedService<SetupStartupService>();
+
+builder.Services.AddSingleton<IUpdateHandler, BotUpdateHandler>();
+builder.Services.AddHostedService<BotBackgroundRunner>();
 
 builder.Services.AddSingleton<IElectricityCheckerManager, ElectricityCheckerManager>();
 builder.Services.AddSingleton<ITelegramNotifier, TelegramNotifier>();
