@@ -7,7 +7,7 @@ WORKDIR /src
 COPY ["src/ElectricityOffNotifier.AppHost/ElectricityOffNotifier.AppHost.csproj", "ElectricityOffNotifier.AppHost/"]
 COPY ["src/ElectricityOffNotifier.Data/ElectricityOffNotifier.Data.csproj", "ElectricityOffNotifier.Data/"]
 RUN dotnet restore "ElectricityOffNotifier.AppHost/ElectricityOffNotifier.AppHost.csproj"
-COPY . .
+COPY src/ .
 
 WORKDIR "/src/ElectricityOffNotifier.AppHost"
 RUN dotnet build "ElectricityOffNotifier.AppHost.csproj" -c Release -o /app/build
