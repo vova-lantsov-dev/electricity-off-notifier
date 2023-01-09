@@ -65,7 +65,8 @@ public sealed class SubscriberController : ControllerBase
             TelegramId = model.TelegramId,
             ProducerId = producerId,
             Culture = model.Culture,
-            TimeZone = model.TimeZone
+            TimeZone = model.TimeZone,
+            TelegramThreadId = model.TelegramThreadId
         };
         _context.Subscribers.Add(subscriber);
 

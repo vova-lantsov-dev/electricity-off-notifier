@@ -32,7 +32,7 @@ public sealed class TelegramNotifier : ITelegramNotifier
 			localTime.ToString("g", localCulture));
 
 		var messageToSend = builder.ToString();
-		await SendMessageAsync(subscriber.TelegramId, messageToSend, cancellationToken);
+		await SendMessageAsync(subscriber.TelegramId, subscriber.TelegramThreadId, messageToSend, cancellationToken);
 	}
 
 	public async Task NotifyElectricityIsUpAsync(CheckerEntry downSince, Address address, Subscriber subscriber,
@@ -51,7 +51,7 @@ public sealed class TelegramNotifier : ITelegramNotifier
 			(int) downDuration.TotalHours, downDuration.Minutes);
 
 		var messageToSend = builder.ToString();
-		await SendMessageAsync(subscriber.TelegramId, messageToSend, cancellationToken);
+		await SendMessageAsync(subscriber.TelegramId, subscriber.TelegramThreadId, messageToSend, cancellationToken);
 	}
 
 	private static void AppendAddressBlockTo(StringBuilder builder, Address address)
@@ -62,13 +62,14 @@ public sealed class TelegramNotifier : ITelegramNotifier
 			address.BuildingNo);
 	}
 
-	private async Task SendMessageAsync(long userId, string message, CancellationToken cancellationToken)
+	private async Task SendMessageAsync(long userId, int? messageThreadId, string message, CancellationToken cancellationToken)
 	{
 		try
 		{
 			await _botClient.SendTextMessageAsync(
 				userId,
 				message,
+				messageThreadId,
 				ParseMode.Html,
 				cancellationToken: cancellationToken);
 		}

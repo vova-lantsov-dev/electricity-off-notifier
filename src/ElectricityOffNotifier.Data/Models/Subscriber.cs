@@ -11,6 +11,8 @@ public sealed class Subscriber
 	
 	[Column("telegram_id")]
 	public long TelegramId { get; set; }
+	[Column("telegram_thread_id")]
+	public int? TelegramThreadId { get; set; }
 	[Column("time_zone"), Required]
 	public string TimeZone { get; set; }
 	[Column("culture"), Required]
