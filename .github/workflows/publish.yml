@@ -42,4 +42,4 @@ jobs:
           echo "ConnectionStrings__HangfireConnectionString='${{ secrets.HANGFIRE_CONNECTION_STRING }}'" >> ".env"
           
           sudo docker compose down
-          sudo docker compose up -d
+          sudo docker compose up --build -d
