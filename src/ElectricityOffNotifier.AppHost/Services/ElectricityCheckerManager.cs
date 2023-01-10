@@ -26,7 +26,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		_recurringJobManager.AddOrUpdate(
 			$"checker-{checkerId}",
 			() => CheckAsync(checkerId, CancellationToken.None),
-			"*/1 * * * *");
+			"*/30 * * * * *");
 	}
 
 	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
