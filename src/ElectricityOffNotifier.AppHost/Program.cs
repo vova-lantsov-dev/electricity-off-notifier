@@ -80,7 +80,8 @@ app.MapHangfireDashboard(new DashboardOptions
 	Authorization = new IDashboardAuthorizationFilter[]
 	{
 		new HangfireAuthorizationFilter()
-	}
+	},
+	DisplayStorageConnectionString = false
 });
 
 await app.RunAsync();
