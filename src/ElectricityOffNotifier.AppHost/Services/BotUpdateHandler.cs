@@ -12,7 +12,7 @@ internal sealed class BotUpdateHandler : IUpdateHandler
     {
         switch (update)
         {
-            case { Message: { Text: "/getid", MessageId: var messageId, Chat.Id: var chatId, MessageThreadId: var messageThreadId } }:
+            case { Message: { Text: "/getid" or "/getid@ElectricityNotifier_bot", MessageId: var messageId, Chat.Id: var chatId, MessageThreadId: var messageThreadId } }:
             {
                 var messageBuilder = new StringBuilder();
                 messageBuilder.Append($"Current chat id: {chatId}");
