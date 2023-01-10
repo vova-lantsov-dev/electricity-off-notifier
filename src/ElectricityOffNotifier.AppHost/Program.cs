@@ -4,6 +4,7 @@ using ElectricityOffNotifier.AppHost.Options;
 using ElectricityOffNotifier.AppHost.Services;
 using ElectricityOffNotifier.Data;
 using Hangfire;
+using Hangfire.Dashboard;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
@@ -73,6 +74,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHangfireDashboard(new DashboardOptions { IsReadOnlyFunc = _ => true });
+app.MapHangfireDashboard(new DashboardOptions
+{
+	IsReadOnlyFunc = _ => true,
+	Authorization = new IDashboardAuthorizationFilter[]
+	{
+		new HangfireAuthorizationFilter()
+	}
+});
 
 await app.RunAsync();
