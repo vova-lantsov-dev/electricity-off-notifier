@@ -61,6 +61,10 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			if (lastNotification is not { IsUpNotification: false })
 			{
 				await LoadSubscribersAsync();
+				
+				if (checker.Subscribers.Count == 0)
+					return;
+				
 				await SetLastNotificationAsync(dbContext, checkerId, false, cancellationToken);
 
 				foreach (var subscriber in checker.Subscribers)
@@ -77,6 +81,10 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			if (lastNotification is not { IsUpNotification: true })
 			{
 				await LoadSubscribersAsync();
+				
+				if (checker.Subscribers.Count == 0)
+					return;
+				
 				await SetLastNotificationAsync(dbContext, checkerId, true, cancellationToken);
 
 				foreach (var subscriber in checker.Subscribers)
