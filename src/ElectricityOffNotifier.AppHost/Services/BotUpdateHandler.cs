@@ -27,7 +27,6 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                         chatId,
                         messageBuilder.ToString(),
                         messageThreadId,
-                        ParseMode.MarkdownV2,
                         replyToMessageId: messageId,
                         cancellationToken: cancellationToken);
                 }
