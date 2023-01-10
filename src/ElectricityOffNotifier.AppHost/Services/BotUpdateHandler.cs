@@ -2,7 +2,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
 namespace ElectricityOffNotifier.AppHost.Services;
 
@@ -12,7 +11,7 @@ internal sealed class BotUpdateHandler : IUpdateHandler
     {
         switch (update)
         {
-            case { Message: { Text: "/getid" or "/getid@ElectricityNotifier_bot", MessageId: var messageId, Chat.Id: var chatId, MessageThreadId: var messageThreadId } }:
+            case { Message: { Text: "!getid", MessageId: var messageId, Chat.Id: var chatId, MessageThreadId: var messageThreadId } }:
             {
                 var messageBuilder = new StringBuilder();
                 messageBuilder.Append($"Current chat id: {chatId}");
