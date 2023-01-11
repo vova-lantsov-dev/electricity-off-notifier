@@ -1,4 +1,5 @@
 ﻿using ElectricityOffNotifier.Data.Models;
+using ElectricityOffNotifier.Data.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ElectricityOffNotifier.Data;
@@ -34,5 +35,9 @@ public class ElectricityDbContext : DbContext
 			.HasConversion(
 				dt => DateTime.SpecifyKind(dt, DateTimeKind.Unspecified),
 				dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc));
+
+		modelBuilder.Entity<Producer>()
+			.Property(p => p.Mode)
+			.HasDefaultValue(ProducerMode.Polling);
 	}
 }

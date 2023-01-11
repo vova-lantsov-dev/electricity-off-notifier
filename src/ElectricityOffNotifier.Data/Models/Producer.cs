@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ElectricityOffNotifier.Data.Models.Enums;
 
 namespace ElectricityOffNotifier.Data.Models;
 
@@ -13,6 +14,10 @@ public sealed class Producer
 	public byte[] AccessTokenHash { get; set; }
 	[Column("is_enabled")]
 	public bool IsEnabled { get; set; }
+	[Column("mode"), Required]
+	public ProducerMode Mode { get; set; }
+	[Column("webhook_url")]
+	public string? WebhookUrl { get; set; }
 
 	[Column("checker_id")]
 	public int CheckerId { get; set; }

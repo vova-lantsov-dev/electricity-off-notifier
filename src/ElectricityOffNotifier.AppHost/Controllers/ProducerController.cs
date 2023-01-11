@@ -2,6 +2,7 @@
 using ElectricityOffNotifier.AppHost.Models;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
+using ElectricityOffNotifier.Data.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PasswordGenerator;
@@ -37,6 +38,18 @@ public sealed class ProducerController : ControllerBase
 			return BadRequest(ModelState);
 		}
 
+		switch (model)
+		{
+			case { Mode: ProducerMode.Webhook, WebhookUrl: null }:
+				ModelState.AddModelError(nameof(model.WebhookUrl),
+					$"Webhook URL must be set when '{nameof(ProducerMode.Webhook)}' mode is specified.");
+				return BadRequest(ModelState);
+			case { Mode: not ProducerMode.Webhook, WebhookUrl: not null }:
+				ModelState.AddModelError(nameof(model.WebhookUrl),
+					$"Webhook URL is allowed only when '{nameof(ProducerMode.Webhook)}' mode is specified.");
+				return BadRequest(ModelState);
+		}
+
 		string accessToken = _accessTokenGenerator.Next();
 		byte[] accessTokenSha256Hash = accessToken.ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]);
 
@@ -45,7 +58,9 @@ public sealed class ProducerController : ControllerBase
 		var producer = new Producer
 		{
 			AccessTokenHash = accessTokenSha256Hash,
-			IsEnabled = false
+			IsEnabled = false,
+			Mode = model.Mode,
+			WebhookUrl = model.WebhookUrl
 		};
 		
 		Checker? checker = await _context.Checkers

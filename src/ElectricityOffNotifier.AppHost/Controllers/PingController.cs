@@ -2,6 +2,7 @@
 using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
+using ElectricityOffNotifier.Data.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,7 @@ public sealed class PingController : ControllerBase
 		int checkerId = int.Parse(User.FindFirstValue(CustomClaimTypes.CheckerId));
 
 		var producer = await _context.Producers
-			.Select(c => new Producer {Id = c.Id, IsEnabled = c.IsEnabled})
+			.Select(c => new Producer {Id = c.Id, IsEnabled = c.IsEnabled, Mode = c.Mode})
 			.FirstAsync(c => c.Id == producerId);
 
 		if (!producer.IsEnabled)
@@ -36,6 +37,14 @@ public sealed class PingController : ControllerBase
 			{
 				reason = "Your API key is disabled. Please contact @vova_lantsov to enable it."
 			});
+		}
+
+		if (producer.Mode != ProducerMode.Polling)
+		{
+			ModelState.AddModelError($"{nameof(Producer)}.{nameof(Producer.Mode)}",
+				$"Producer mode must be '{nameof(ProducerMode.Polling)}' to use this endpoint. " +
+				"Please, register another producer.");
+			return BadRequest(ModelState);
 		}
 
 		var checkerEntry = new CheckerEntry
