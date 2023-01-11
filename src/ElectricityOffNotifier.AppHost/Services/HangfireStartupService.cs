@@ -1,4 +1,5 @@
 ﻿using ElectricityOffNotifier.Data;
+using ElectricityOffNotifier.Data.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ElectricityOffNotifier.AppHost.Services;
@@ -22,12 +23,14 @@ public sealed class HangfireStartupService : IHostedService
 		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
 		var checkers = await dbContext.Checkers
-			.Select(c => new { c.Id })
+			.Include(c => c.Producers)
+			.Select(c => new { c.Id, c.Producers })
 			.ToListAsync(cancellationToken: cancellationToken);
 
 		foreach (var checker in checkers)
 		{
-			_checkerManager.StartChecker(checker.Id);
+			_checkerManager.StartChecker(checker.Id,
+				checker.Producers.Where(p => p.Mode == ProducerMode.Webhook).Select(p => p.Id).ToArray());
 		}
 	}
 

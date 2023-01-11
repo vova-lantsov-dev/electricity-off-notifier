@@ -10,6 +10,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 	private readonly IRecurringJobManager _recurringJobManager;
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ITelegramNotifier _telegramNotifier;
+	private readonly HttpClient _httpClient;
 
 	// A timer that postpones the checks after startup
 	private readonly Task _startupDelay = Task.Delay(TimeSpan.FromMinutes(1d));
@@ -17,19 +18,29 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 	public ElectricityCheckerManager(
 		IRecurringJobManager recurringJobManager,
 		IServiceScopeFactory scopeFactory,
-		ITelegramNotifier telegramNotifier)
+		ITelegramNotifier telegramNotifier,
+		HttpClient httpClient)
 	{
 		_recurringJobManager = recurringJobManager;
 		_scopeFactory = scopeFactory;
 		_telegramNotifier = telegramNotifier;
+		_httpClient = httpClient;
 	}
 
-	public void StartChecker(int checkerId)
+	public void StartChecker(int checkerId, int[] webhookProducerIds)
 	{
 		_recurringJobManager.AddOrUpdate(
 			$"checker-{checkerId}",
 			() => CheckAsync(checkerId, CancellationToken.None),
 			"*/10 * * * * *");
+
+		foreach (int webhookProducerId in webhookProducerIds)
+		{
+			_recurringJobManager.AddOrUpdate(
+				"",
+				() => ProcessWebhookAsync(webhookProducerId, CancellationToken.None),
+				"*/15 * * * * *");
+		}
 	}
 
 	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
@@ -106,6 +117,34 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 					}
 				}
 			}
+		}
+	}
+
+	public async Task ProcessWebhookAsync(int producerId, CancellationToken cancellationToken)
+	{
+		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
+
+		Producer producer = await dbContext.Producers
+			.AsNoTracking()
+			.FirstAsync(p => p.Id == producerId, cancellationToken);
+		
+		if (!producer.IsEnabled)
+			return;
+
+		using HttpResponseMessage response = await _httpClient.GetAsync(producer.WebhookUrl!,
+			HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+		
+		if (response.IsSuccessStatusCode)
+		{
+			var checkerEntry = new CheckerEntry
+			{
+				DateTime = DateTime.UtcNow,
+				CheckerId = producer.CheckerId
+			};
+			dbContext.CheckerEntries.Add(checkerEntry);
+	
+			await dbContext.SaveChangesAsync(cancellationToken);
 		}
 	}
 	

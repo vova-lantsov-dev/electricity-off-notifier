@@ -2,5 +2,5 @@
 
 public interface IElectricityCheckerManager
 {
-	void StartChecker(int checkerId);
+	void StartChecker(int checkerId, int[] webhookProducerIds);
 }

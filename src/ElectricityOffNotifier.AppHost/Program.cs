@@ -51,8 +51,13 @@ builder.Services.AddHostedService<SetupStartupService>();
 builder.Services.AddSingleton<IUpdateHandler, BotUpdateHandler>();
 builder.Services.AddHostedService<BotBackgroundRunner>();
 
-builder.Services.AddSingleton<IElectricityCheckerManager, ElectricityCheckerManager>();
 builder.Services.AddSingleton<ITelegramNotifier, TelegramNotifier>();
+builder.Services.AddSingleton<IElectricityCheckerManager, ElectricityCheckerManager>();
+builder.Services.AddHttpClient<IElectricityCheckerManager, ElectricityCheckerManager>(opts =>
+{
+	opts.Timeout = TimeSpan.FromSeconds(5);
+});
+
 builder.Services.AddHostedService<HangfireStartupService>();
 
 // Build and run the application
