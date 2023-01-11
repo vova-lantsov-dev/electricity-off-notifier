@@ -26,7 +26,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		_recurringJobManager.AddOrUpdate(
 			$"checker-{checkerId}",
 			() => CheckAsync(checkerId, CancellationToken.None),
-			"*/30 * * * * *");
+			"*/10 * * * * *");
 	}
 
 	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		SentNotification? lastNotification =
 			await GetLastNotificationAsync(dbContext, checkerId, cancellationToken);
 		
-		if (DateTime.UtcNow - checker.Entries[0].DateTime > TimeSpan.FromMinutes(2d))
+		if (DateTime.UtcNow - checker.Entries[0].DateTime > TimeSpan.FromSeconds(45))
 		{
 			// If we got here - it seems like the electricity is down
 			if (lastNotification is not { IsUpNotification: false })
