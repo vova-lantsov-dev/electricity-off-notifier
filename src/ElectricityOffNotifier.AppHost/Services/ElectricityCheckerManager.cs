@@ -11,6 +11,9 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ITelegramNotifier _telegramNotifier;
 
+	// A timer that postpones the checks after startup
+	private readonly Task _startupDelay = Task.Delay(TimeSpan.FromMinutes(1d));
+
 	public ElectricityCheckerManager(
 		IRecurringJobManager recurringJobManager,
 		IServiceScopeFactory scopeFactory,
@@ -31,6 +34,9 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 
 	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
 	{
+		if (!_startupDelay.IsCompleted)
+			return;
+		
 		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
 		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
@@ -60,18 +66,21 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			// If we got here - it seems like the electricity is down
 			if (lastNotification is not { IsUpNotification: false })
 			{
-				await LoadSubscribersAsync();
-				
-				if (checker.Subscribers.Count == 0)
-					return;
-				
 				await SetLastNotificationAsync(dbContext, checkerId, false, cancellationToken);
 
-				foreach (var subscriber in checker.Subscribers)
+				if (lastNotification != null)
 				{
-					await _telegramNotifier.NotifyElectricityIsDownAsync(checker.Entries[0], checker.Address,
-						subscriber,
-						cancellationToken);
+					await LoadSubscribersAsync();
+				
+					if (checker.Subscribers.Count == 0)
+						return;
+					
+					foreach (var subscriber in checker.Subscribers)
+					{
+						await _telegramNotifier.NotifyElectricityIsDownAsync(lastNotification, checker.Address,
+							subscriber,
+							cancellationToken);
+					}
 				}
 			}
 		}
@@ -80,17 +89,21 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			// Otherwise, if the electricity is up again, check if we need to notify about that
 			if (lastNotification is not { IsUpNotification: true })
 			{
-				await LoadSubscribersAsync();
-				
-				if (checker.Subscribers.Count == 0)
-					return;
-				
 				await SetLastNotificationAsync(dbContext, checkerId, true, cancellationToken);
 
-				foreach (var subscriber in checker.Subscribers)
+				if (lastNotification != null)
 				{
-					await _telegramNotifier.NotifyElectricityIsUpAsync(checker.Entries[0], checker.Address, subscriber,
-						cancellationToken);
+					await LoadSubscribersAsync();
+					
+					if (checker.Subscribers.Count == 0)
+						return;
+					
+					foreach (var subscriber in checker.Subscribers)
+					{
+						await _telegramNotifier.NotifyElectricityIsUpAsync(lastNotification, checker.Address,
+							subscriber,
+							cancellationToken);
+					}
 				}
 			}
 		}

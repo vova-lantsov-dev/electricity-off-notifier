@@ -4,9 +4,9 @@ namespace ElectricityOffNotifier.AppHost.Services;
 
 public interface ITelegramNotifier
 {
-	Task NotifyElectricityIsDownAsync(CheckerEntry lastCheckerEntry, Address address, Subscriber subscriber,
+	Task NotifyElectricityIsDownAsync(SentNotification upSince, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken);
 
-	Task NotifyElectricityIsUpAsync(CheckerEntry downSince, Address address, Subscriber subscriber,
+	Task NotifyElectricityIsUpAsync(SentNotification downSince, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken);
 }

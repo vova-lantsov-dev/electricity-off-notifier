@@ -20,7 +20,7 @@ public sealed class TelegramNotifier : ITelegramNotifier
 		_botClient = botClient;
 	}
 	
-	public async Task NotifyElectricityIsDownAsync(CheckerEntry lastCheckerEntry, Address address, Subscriber subscriber,
+	public async Task NotifyElectricityIsDownAsync(SentNotification upSince, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken)
 	{
 		DateTime localTime = GetLocalTime(DateTime.UtcNow, subscriber.TimeZone);
@@ -35,7 +35,7 @@ public sealed class TelegramNotifier : ITelegramNotifier
 		await SendMessageAsync(subscriber.TelegramId, subscriber.TelegramThreadId, messageToSend, cancellationToken);
 	}
 
-	public async Task NotifyElectricityIsUpAsync(CheckerEntry downSince, Address address, Subscriber subscriber,
+	public async Task NotifyElectricityIsUpAsync(SentNotification downSince, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken)
 	{
 		DateTime localTime = GetLocalTime(downSince.DateTime, subscriber.TimeZone);
