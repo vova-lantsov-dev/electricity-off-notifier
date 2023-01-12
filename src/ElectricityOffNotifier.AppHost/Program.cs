@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 if (builder.Environment.IsProduction())
 {
-	builder.Services.AddApplicationInsightsTelemetry();
+	builder.Services.AddApplicationInsightsTelemetryWorkerService();
 }
 
 builder.Configuration.AddJsonFile("setup.json", optional: true, reloadOnChange: false)
