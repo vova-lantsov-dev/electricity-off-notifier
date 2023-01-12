@@ -12,6 +12,11 @@ using Telegram.Bot.Polling;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (builder.Environment.IsProduction())
+{
+	builder.Services.AddApplicationInsightsTelemetry();
+}
+
 builder.Configuration.AddJsonFile("setup.json", optional: true, reloadOnChange: false)
 	.AddJsonFile($"setup.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
 

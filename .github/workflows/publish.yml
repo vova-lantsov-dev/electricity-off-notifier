@@ -40,6 +40,7 @@ jobs:
           echo "Bot__Token='${{ secrets.TELEGRAM_BOT_TOKEN }}'" >> ".env"
           echo "ConnectionStrings__ElectricityConnectionString='${{ secrets.ELECTRICITY_CONNECTION_STRING }}'" >> ".env"
           echo "ConnectionStrings__HangfireConnectionString='${{ secrets.HANGFIRE_CONNECTION_STRING }}'" >> ".env"
+          echo "ApplicationInsights__ConnectionString='${{ secrets.APP_INSIGHTS_CONNECTION_STRING }}'" >> ".env"
           
           sudo docker compose down
           sudo docker compose up --build -d
