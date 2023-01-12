@@ -37,7 +37,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		foreach (int webhookProducerId in webhookProducerIds)
 		{
 			_recurringJobManager.AddOrUpdate(
-				"",
+				$"c{checkerId}-p{webhookProducerId}-webhook",
 				() => ProcessWebhookAsync(webhookProducerId, CancellationToken.None),
 				"*/15 * * * * *");
 		}
