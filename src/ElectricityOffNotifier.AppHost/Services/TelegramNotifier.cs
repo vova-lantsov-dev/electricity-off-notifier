@@ -20,7 +20,7 @@ public sealed class TelegramNotifier : ITelegramNotifier
 		_botClient = botClient;
 	}
 	
-	public async Task NotifyElectricityIsDownAsync(SentNotification upSince, Address address, Subscriber subscriber,
+	public async Task NotifyElectricityIsDownAsync(SentNotification? upSince, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken)
 	{
 		DateTime localTime = GetLocalTime(DateTime.UtcNow, subscriber.TimeZone);
@@ -35,20 +35,25 @@ public sealed class TelegramNotifier : ITelegramNotifier
 		await SendMessageAsync(subscriber.TelegramId, subscriber.TelegramThreadId, messageToSend, cancellationToken);
 	}
 
-	public async Task NotifyElectricityIsUpAsync(SentNotification downSince, Address address, Subscriber subscriber,
+	public async Task NotifyElectricityIsUpAsync(SentNotification? downSince, Address address, Subscriber subscriber,
 		CancellationToken cancellationToken)
 	{
-		DateTime localTime = GetLocalTime(downSince.DateTime, subscriber.TimeZone);
-		IFormatProvider localCulture = GetCulture(subscriber.Culture);
-		
 		var builder = new StringBuilder();
 		AppendAddressBlockTo(builder, address);
-		builder.AppendFormat("<b>Електропостачання відновлено!</b>\nБуло відсутнє з {0}\n",
-			localTime.ToString("g", localCulture));
+		builder.Append("<b>Електропостачання відновлено!</b>");
 
-		TimeSpan downDuration = DateTime.UtcNow - downSince.DateTime;
-		builder.AppendFormat("Загальна тривалість відключення: {0} год. {1:D2} хв.",
-			(int) downDuration.TotalHours, downDuration.Minutes);
+		if (downSince != null)
+		{
+			DateTime localTime = GetLocalTime(downSince.DateTime, subscriber.TimeZone);
+            IFormatProvider localCulture = GetCulture(subscriber.Culture);
+
+			builder.AppendFormat("\nБуло відсутнє з {0}\n",
+				localTime.ToString("g", localCulture));
+			
+			TimeSpan downDuration = DateTime.UtcNow - downSince.DateTime;
+			builder.AppendFormat("Загальна тривалість відключення: {0} год. {1:D2} хв.",
+				(int) downDuration.TotalHours, downDuration.Minutes);
+		}
 
 		var messageToSend = builder.ToString();
 		await SendMessageAsync(subscriber.TelegramId, subscriber.TelegramThreadId, messageToSend, cancellationToken);

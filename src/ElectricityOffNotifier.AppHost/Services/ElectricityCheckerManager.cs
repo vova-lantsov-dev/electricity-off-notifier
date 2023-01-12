@@ -69,54 +69,39 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 				.ToListAsync(cancellationToken);
 		}
 		
+		// Find a last notification sent to the Telegram chat
 		SentNotification? lastNotification =
 			await GetLastNotificationAsync(dbContext, checkerId, cancellationToken);
 		
-		if (DateTime.UtcNow - checker.Entries[0].DateTime > TimeSpan.FromSeconds(45))
-		{
-			// If we got here - it seems like the electricity is down
-			if (lastNotification is not { IsUpNotification: false })
-			{
-				await SetLastNotificationAsync(dbContext, checkerId, false, cancellationToken);
+		// Did we already sent a Telegram notification about current status?
+		bool isDown = DateTime.UtcNow - checker.Entries[0].DateTime > TimeSpan.FromSeconds(45);
+		
+		if (lastNotification is { IsUpNotification: true } && !isDown)
+			return;
+		
+		if (lastNotification is { IsUpNotification: false } && isDown)
+			return;
 
-				if (lastNotification != null)
-				{
-					await LoadSubscribersAsync();
-				
-					if (checker.Subscribers.Count == 0)
-						return;
-					
-					foreach (var subscriber in checker.Subscribers)
-					{
-						await _telegramNotifier.NotifyElectricityIsDownAsync(lastNotification, checker.Address,
-							subscriber,
-							cancellationToken);
-					}
-				}
-			}
+		// Insert a new sent notification entry
+		await SetLastNotificationAsync(dbContext, checkerId, !isDown, cancellationToken);
+
+		// Load the subscribers that need to be notified about electricity status
+		await LoadSubscribersAsync();
+		if (checker.Subscribers.Count == 0)
+		{
+			// There are no subscribers, skipping...
+			return;
 		}
-		else
-		{
-			// Otherwise, if the electricity is up again, check if we need to notify about that
-			if (lastNotification is not { IsUpNotification: true })
-			{
-				await SetLastNotificationAsync(dbContext, checkerId, true, cancellationToken);
 
-				if (lastNotification != null)
-				{
-					await LoadSubscribersAsync();
-					
-					if (checker.Subscribers.Count == 0)
-						return;
-					
-					foreach (var subscriber in checker.Subscribers)
-					{
-						await _telegramNotifier.NotifyElectricityIsUpAsync(lastNotification, checker.Address,
-							subscriber,
-							cancellationToken);
-					}
-				}
-			}
+		// Get a method delegate that should be invoked to notify about electricity status
+		Func<SentNotification?, Address, Subscriber, CancellationToken, Task> action = isDown
+			? _telegramNotifier.NotifyElectricityIsDownAsync
+			: _telegramNotifier.NotifyElectricityIsUpAsync;
+		
+		// Notify every subscriber about electricity status
+		foreach (Subscriber subscriber in checker.Subscribers)
+		{
+			await action(lastNotification, checker.Address, subscriber, cancellationToken);
 		}
 	}
 
