@@ -11,13 +11,15 @@ namespace ElectricityOffNotifier.AppHost.Services;
 public sealed class TelegramNotifier : ITelegramNotifier
 {
 	private readonly ITelegramBotClient _botClient;
-	
+	private readonly ILogger<TelegramNotifier> _logger;
+
 	private static readonly ConcurrentDictionary<string, Lazy<TimeZoneInfo>> TimeZones = new();
 	private static readonly ConcurrentDictionary<string, Lazy<IFormatProvider>> Cultures = new();
 
-	public TelegramNotifier(ITelegramBotClient botClient)
+	public TelegramNotifier(ITelegramBotClient botClient, ILogger<TelegramNotifier> logger)
 	{
 		_botClient = botClient;
+		_logger = logger;
 	}
 	
 	public async Task NotifyElectricityIsDownAsync(SentNotification? upSince, Address address, Subscriber subscriber,
@@ -78,9 +80,12 @@ public sealed class TelegramNotifier : ITelegramNotifier
 				ParseMode.Html,
 				cancellationToken: cancellationToken);
 		}
-		catch
+		catch (Exception ex)
 		{
-			// silent
+			_logger.LogDebug(ex,
+				"Error occurred while sending a message to Telegram. Chat id: {ChatId}, msg thread id: {MsgThread}",
+				userId,
+				messageThreadId);
 		}
 	}
 

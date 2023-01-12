@@ -1,4 +1,5 @@
-﻿using ElectricityOffNotifier.Data;
+﻿using System.Text.Json;
+using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ITelegramNotifier _telegramNotifier;
 	private readonly HttpClient _httpClient;
+	private readonly ILogger<ElectricityCheckerManager> _logger;
 
 	// A timer that postpones the checks after startup
 	private readonly Task _startupDelay = Task.Delay(TimeSpan.FromMinutes(1d));
@@ -19,12 +21,14 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		IRecurringJobManager recurringJobManager,
 		IServiceScopeFactory scopeFactory,
 		ITelegramNotifier telegramNotifier,
-		HttpClient httpClient)
+		HttpClient httpClient,
+		ILogger<ElectricityCheckerManager> logger)
 	{
 		_recurringJobManager = recurringJobManager;
 		_scopeFactory = scopeFactory;
 		_telegramNotifier = telegramNotifier;
 		_httpClient = httpClient;
+		_logger = logger;
 	}
 
 	public void StartChecker(int checkerId, int[] webhookProducerIds)
@@ -47,7 +51,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 	{
 		if (!_startupDelay.IsCompleted)
 			return;
-		
+
 		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
 		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
@@ -57,7 +61,9 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			.Include(c => c.Address)
 			.ThenInclude(a => a.City)
 			.FirstAsync(c => c.Id == checkerId, cancellationToken);
-		
+
+		_logger.LogDebug("Checker {CheckerId} has {EntriesCount} entries", checkerId, checker.Entries.Count);
+
 		if (checker.Entries.Count < 1)
 			return;
 
@@ -68,19 +74,38 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 				.Where(s => s.CheckerId == checkerId)
 				.ToListAsync(cancellationToken);
 		}
-		
+
 		// Find a last notification sent to the Telegram chat
 		SentNotification? lastNotification =
 			await GetLastNotificationAsync(dbContext, checkerId, cancellationToken);
-		
+
+		if (_logger.IsEnabled(LogLevel.Trace))
+		{
+			string lastNotificationJson = JsonSerializer.Serialize(lastNotification);
+			_logger.LogTrace("Last notification for checker {CheckerId} is:\n{JsonValue}", checkerId,
+				lastNotificationJson);
+		}
+
 		// Did we already sent a Telegram notification about current status?
 		bool isDown = DateTime.UtcNow - checker.Entries[0].DateTime > TimeSpan.FromSeconds(45);
-		
+		_logger.LogDebug("Current status is {Status} for checker {CheckerId}",
+			isDown ? "Down" : "Up", checkerId);
+
 		if (lastNotification is { IsUpNotification: true } && !isDown)
+		{
+			_logger.LogDebug(
+				"Last notification and current statuses are both Up for checker {CheckerId}, skipping...",
+				checkerId);
 			return;
-		
+		}
+
 		if (lastNotification is { IsUpNotification: false } && isDown)
+		{
+			_logger.LogDebug(
+				"Last notification and current statuses are both Down for checker {CheckerId}, skipping...",
+				checkerId);
 			return;
+		}
 
 		// Insert a new sent notification entry
 		await SetLastNotificationAsync(dbContext, checkerId, !isDown, cancellationToken);
@@ -89,7 +114,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		await LoadSubscribersAsync();
 		if (checker.Subscribers.Count == 0)
 		{
-			// There are no subscribers, skipping...
+			_logger.LogDebug("There are no subscribers for checker {CheckerId}, skipping...", checkerId);
 			return;
 		}
 
@@ -97,10 +122,12 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		Func<SentNotification?, Address, Subscriber, CancellationToken, Task> action = isDown
 			? _telegramNotifier.NotifyElectricityIsDownAsync
 			: _telegramNotifier.NotifyElectricityIsUpAsync;
-		
+
 		// Notify every subscriber about electricity status
 		foreach (Subscriber subscriber in checker.Subscribers)
 		{
+			_logger.LogDebug("Sending a Telegram notification about {Status} status to subscriber {SubscriberId}",
+				isDown ? "Down" : "Up", subscriber.Id);
 			await action(lastNotification, checker.Address, subscriber, cancellationToken);
 		}
 	}
