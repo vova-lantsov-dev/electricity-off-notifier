@@ -14,8 +14,8 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 	private readonly HttpClient _httpClient;
 	private readonly ILogger<ElectricityCheckerManager> _logger;
 
-	// A timer that postpones the checks after startup
-	private readonly Task _startupDelay = Task.Delay(TimeSpan.FromMinutes(1d));
+	// A time of startup that is used to postpone the checks after startup
+	private static readonly DateTime StartupTime = DateTime.Now;
 
 	public ElectricityCheckerManager(
 		IRecurringJobManager recurringJobManager,
@@ -49,7 +49,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 
 	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
 	{
-		if (!_startupDelay.IsCompleted)
+		if (DateTime.Now - StartupTime < TimeSpan.FromMinutes(1))
 			return;
 
 		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
