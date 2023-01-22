@@ -29,6 +29,8 @@ internal sealed class TemplateService : ITemplateService
 
         if (since != null)
         {
+            renderData["SinceRegion"] = true;
+            
             DateTime localTime = GetLocalTime(since.DateTime, subscriber.TimeZone);
             IFormatProvider culture = GetCulture(subscriber.Culture);
             
