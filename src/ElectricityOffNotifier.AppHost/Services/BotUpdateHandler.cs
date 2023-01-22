@@ -91,19 +91,22 @@ internal sealed class BotUpdateHandler : IUpdateHandler
 
                     return;
                 }
+                
+                // escaping html symbols to prevent HTML parse mode errors
+                string escapedTemplate = (text switch
+                    {
+                        "!up_template" => chatInfo.MessageUpTemplate,
+                        _ => chatInfo.MessageDownTemplate
+                    })
+                    .Replace("&", "&amp;")
+                    .Replace("<", "&lt;")
+                    .Replace(">", "&gt;");
 
                 StringBuilder msgToSend = new();
-                msgToSend.Append("Поточний шаблон повідомлення:\n\n<pre>");
-                msgToSend.AppendLine(text switch
-                {
-                    "!up_template" => chatInfo.MessageUpTemplate,
-                    _ => chatInfo.MessageDownTemplate
-                } + "</pre>");
-                msgToSend.AppendLine();
-
+                msgToSend.AppendFormat("Поточний шаблон повідомлення:\n\n<pre>{0}</pre>\n\n", escapedTemplate);
                 msgToSend.AppendFormat(
                     "Щоб задати новий шаблон - надішліть його у цей чат та зробіть " +
-                    "Reply (Відповісти) з текстом `{0}` на надісланому повідомленні.", text);
+                    "<b>Reply</b> (Відповісти) з текстом <code>{0}</code> на надісланому повідомленні.", text);
 
                 try
                 {
@@ -165,12 +168,6 @@ internal sealed class BotUpdateHandler : IUpdateHandler
 
                     return;
                 }
-                
-                // escaping html symbols to prevent HTML parse mode errors
-                replyMessageText = replyMessageText
-                    .Replace("&", "&amp;")
-                    .Replace("<", "&lt;")
-                    .Replace(">", "&gt;");
 
                 switch (text)
                 {
