@@ -128,11 +128,19 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     Text: var text and ("!down_template" or "!up_template"),
                     MessageId: var messageId,
                     ReplyToMessage.Text: { } replyMessageText,
-                    Chat.Id: var chatId,
+                    Chat: { Id: var chatId, Type: var chatType },
+                    From.Id: var fromId,
                     MessageThreadId: var messageThreadId
                 }
             }:
             {
+                if (chatType is ChatType.Group or ChatType.Supergroup)
+                {
+                    ChatMember chatMember = await botClient.GetChatMemberAsync(chatId, fromId, cancellationToken);
+                    if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
+                        return;
+                }
+                
                 if (!_templateService.ValidateMessageTemplate(replyMessageText))
                 {
                     try
