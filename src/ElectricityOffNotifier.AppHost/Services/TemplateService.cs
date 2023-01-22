@@ -27,15 +27,13 @@ internal sealed class TemplateService : ITemplateService
         {
             ["Address"] = $"{address.City.Name}, {address.City.Region}".TrimEnd(' ', ',') +
                           $", {address.Street} {address.BuildingNo}",
-            ["NowDate"] = DateTime.UtcNow.ToString("g", culture)
+            ["NowDate"] = GetLocalTime(DateTime.UtcNow, subscriber.TimeZone).ToString("g", culture)
         };
 
         if (since != null)
         {
             renderData["SinceRegion"] = true;
-            
-            DateTime localTime = GetLocalTime(since.DateTime, subscriber.TimeZone);
-            renderData["SinceDate"] = localTime.ToString("g", culture);
+            renderData["SinceDate"] = GetLocalTime(since.DateTime, subscriber.TimeZone).ToString("g", culture);
             
             TimeSpan duration = DateTime.UtcNow - since.DateTime;
             renderData["DurationHours"] = (int)duration.TotalHours;
@@ -50,9 +48,11 @@ internal sealed class TemplateService : ITemplateService
         var renderData = new Dictionary<string, object>
         {
             ["Address"] = "ADDRESS",
-            ["SinceDate"] = DateTime.Now.ToString("g"),
+            ["SinceDate"] = DateTime.Now.AddHours(-2).ToString("g"),
             ["DurationHours"] = 1,
-            ["DurationMinutes"] = "03"
+            ["DurationMinutes"] = "03",
+            ["NowDate"] = DateTime.Now.ToString("g"),
+            ["SinceRegion"] = true
         };
 
         try
