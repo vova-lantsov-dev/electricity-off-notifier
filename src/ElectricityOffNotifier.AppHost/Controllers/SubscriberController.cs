@@ -7,6 +7,8 @@ using ElectricityOffNotifier.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 using TimeZoneConverter;
 
 namespace ElectricityOffNotifier.AppHost.Controllers;
@@ -17,10 +19,15 @@ namespace ElectricityOffNotifier.AppHost.Controllers;
 public sealed class SubscriberController : ControllerBase
 {
     private readonly ElectricityDbContext _context;
+    private readonly ITelegramBotClient _botClient;
+    private readonly ILogger<SubscriberController> _logger;
 
-    public SubscriberController(ElectricityDbContext context)
+    public SubscriberController(ElectricityDbContext context, ITelegramBotClient botClient,
+        ILogger<SubscriberController> logger)
     {
         _context = context;
+        _botClient = botClient;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -59,6 +66,24 @@ public sealed class SubscriberController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        Chat targetChat;
+        try
+        {
+            targetChat = await _botClient.GetChatAsync(model.TelegramId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Unable to get a Telegram chat {TelegramId}", model.TelegramId);
+            
+            ModelState.AddModelError(nameof(model.TelegramId),
+                "Unable to find the specified chat. Maybe bot was not added to it.");
+            return BadRequest(ModelState);
+        }
+
+        ChatInfo? chatInfo = await _context.ChatInfo
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ci => ci.TelegramId == model.TelegramId, cancellationToken);
+
         var subscriber = new Subscriber
         {
             CheckerId = checkerId,
@@ -68,6 +93,15 @@ public sealed class SubscriberController : ControllerBase
             TimeZone = model.TimeZone,
             TelegramThreadId = model.TelegramThreadId
         };
+        if (chatInfo == null)
+        {
+            subscriber.ChatInfo = new ChatInfo
+            {
+                TelegramId = model.TelegramId,
+                Name = $"{targetChat.FirstName} {targetChat.LastName}".TrimEnd()
+            };
+        }
+        
         _context.Subscribers.Add(subscriber);
 
         await _context.SaveChangesAsync(CancellationToken.None);

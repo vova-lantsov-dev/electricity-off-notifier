@@ -15,6 +15,7 @@
     <PackageReference Include="Hangfire.PostgreSql" Version="1.9.9" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.21.0" />
     <PackageReference Include="PasswordGenerator" Version="2.1.0" />
+    <PackageReference Include="Stubble.Core" Version="1.10.8" />
     <PackageReference Include="Telegram.Bot" Version="19.0.0-preview.2" />
     <PackageReference Include="TimeZoneConverter" Version="6.0.1" />
   </ItemGroup>

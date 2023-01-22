@@ -71,6 +71,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		{
 			checker.Subscribers = await dbContext.Subscribers
 				.AsNoTracking()
+				.Include(s => s.ChatInfo)
 				.Where(s => s.CheckerId == checkerId)
 				.ToListAsync(cancellationToken);
 		}

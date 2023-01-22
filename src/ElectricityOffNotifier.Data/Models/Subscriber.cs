@@ -27,4 +27,7 @@ public sealed class Subscriber
 	public int CheckerId { get; set; }
 	[ForeignKey(nameof(CheckerId))]
 	public Checker Checker { get; set; }
+
+	[ForeignKey(nameof(TelegramId))]
+	public ChatInfo ChatInfo { get; set; }
 }

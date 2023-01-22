@@ -56,6 +56,7 @@ builder.Services.AddHostedService<SetupStartupService>();
 builder.Services.AddSingleton<IUpdateHandler, BotUpdateHandler>();
 builder.Services.AddHostedService<BotBackgroundRunner>();
 
+builder.Services.AddSingleton<ITemplateService, TemplateService>();
 builder.Services.AddSingleton<ITelegramNotifier, TelegramNotifier>();
 builder.Services.AddSingleton<IElectricityCheckerManager, ElectricityCheckerManager>();
 builder.Services.AddHttpClient<IElectricityCheckerManager, ElectricityCheckerManager>(opts =>
