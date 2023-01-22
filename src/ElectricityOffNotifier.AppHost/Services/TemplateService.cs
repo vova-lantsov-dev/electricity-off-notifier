@@ -21,10 +21,13 @@ internal sealed class TemplateService : ITemplateService
     
     public string ReplaceMessageTemplate(string input, Address address, Subscriber subscriber, SentNotification? since)
     {
+        IFormatProvider culture = GetCulture(subscriber.Culture);
+        
         var renderData = new Dictionary<string, object>
         {
             ["Address"] = $"{address.City.Name}, {address.City.Region}".TrimEnd(' ', ',') +
-                          $", {address.Street} {address.BuildingNo}"
+                          $", {address.Street} {address.BuildingNo}",
+            ["NowDate"] = DateTime.UtcNow.ToString("g", culture)
         };
 
         if (since != null)
@@ -32,8 +35,6 @@ internal sealed class TemplateService : ITemplateService
             renderData["SinceRegion"] = true;
             
             DateTime localTime = GetLocalTime(since.DateTime, subscriber.TimeZone);
-            IFormatProvider culture = GetCulture(subscriber.Culture);
-            
             renderData["SinceDate"] = localTime.ToString("g", culture);
             
             TimeSpan duration = DateTime.UtcNow - since.DateTime;
