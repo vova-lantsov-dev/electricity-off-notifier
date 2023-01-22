@@ -13,25 +13,28 @@ internal sealed class BotUpdateHandler : IUpdateHandler
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ITemplateService _templateService;
+    private readonly ILogger<BotUpdateHandler> _logger;
 
-    public BotUpdateHandler(IServiceProvider serviceProvider, ITemplateService templateService)
+    public BotUpdateHandler(IServiceProvider serviceProvider, ITemplateService templateService,
+        ILogger<BotUpdateHandler> logger)
     {
         _serviceProvider = serviceProvider;
         _templateService = templateService;
+        _logger = logger;
     }
     
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        var isAdmin = true;
         {
-            // Verify user rights to call the commands
+            // Verify user rights in group to call the commands
             if (update is
                 {
                     Message: { Chat.Type: ChatType.Group or ChatType.Supergroup, Chat.Id: var chatId, From.Id: var fromId }
                 })
             {
                 ChatMember chatMember = await botClient.GetChatMemberAsync(chatId, fromId, cancellationToken);
-                if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
-                    return;
+                isAdmin = chatMember is { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator };
             }
         }
 
@@ -47,7 +50,8 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     Chat.Id: var chatId,
                     MessageThreadId: var messageThreadId
                 }
-            }:
+            }
+            when isAdmin:
             {
                 var messageBuilder = new StringBuilder();
                 messageBuilder.Append($"Current chat id: {chatId}");
@@ -83,7 +87,8 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     Chat.Id: var chatId,
                     MessageThreadId: var messageThreadId
                 }
-            }:
+            }
+            when isAdmin:
             {
                 await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
                 var context = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
@@ -98,9 +103,9 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                         await botClient.SendTextMessageAsync(chatId, "Цей чат ще не зареєстровано!",
                             messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // silent
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
                     }
 
                     return;
@@ -127,9 +132,9 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     await botClient.SendTextMessageAsync(chatId, msgToSend.ToString(), messageThreadId,
                         ParseMode.Html, replyToMessageId: messageId, cancellationToken: cancellationToken);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // silent
+                    _logger.LogDebug(ex, "Error occurred while sending Telegram message");
                 }
 
                 break;
@@ -145,7 +150,8 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     Chat.Id: var chatId,
                     MessageThreadId: var messageThreadId
                 }
-            }:
+            }
+            when isAdmin:
             {
                 if (!_templateService.ValidateMessageTemplate(replyMessageText))
                 {
@@ -155,9 +161,9 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                             "Надісланий шаблон є некоректним, виправте помилку та повторіть спробу.",
                             messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // silent
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
                     }
                     
                     return;
@@ -175,9 +181,9 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                         await botClient.SendTextMessageAsync(chatId, "Цей чат ще не зареєстровано!",
                             messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // silent
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
                     }
 
                     return;
@@ -201,11 +207,57 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     await botClient.SendTextMessageAsync(chatId, "Новий шаблон було зареєстровано!", messageThreadId,
                         replyToMessageId: messageId, cancellationToken: cancellationToken);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // silent
+                    _logger.LogDebug(ex, "Error occurred while sending Telegram message");
                 }
 
+                break;
+            }
+
+            case
+            {
+                Message:
+                {
+                    Text: "!info",
+                    MessageId: var messageId,
+                    Chat.Id: var chatId,
+                    MessageThreadId: var messageThreadId
+                }
+            }:
+            {
+                await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
+                var context = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
+                
+                ChatInfo? chatInfo = await context.ChatInfo
+                    .Include(ci => ci.Subscribers)
+                    .ThenInclude(s => s.Producer)
+                    .FirstOrDefaultAsync(ci => ci.TelegramId == chatId, cancellationToken);
+                if (chatInfo == null)
+                {
+                    try
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Цей чат ще не зареєстровано!",
+                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                    }
+
+                    return;
+                }
+
+                StringBuilder msgToSend = new();
+                msgToSend.Append($"Chat name: {chatInfo.Name}\n");
+                msgToSend.Append($"Is admin: {isAdmin}\n\n");
+                msgToSend.Append("Subscribers:\n");
+                msgToSend.AppendJoin("\n", chatInfo.Subscribers.Select((s, i) =>
+                    $"{i + 1}) Subscriber id: {s.Id}\nCulture: {s.Culture}\nTime zone: {s.TimeZone}\nProducer mode: {s.Producer.Mode:G}\nProducer id: {s.Producer.Id}\nProducer enabled: {s.Producer.IsEnabled}"));
+
+                await botClient.SendTextMessageAsync(chatId, msgToSend.ToString(), messageThreadId,
+                    replyToMessageId: messageId, cancellationToken: cancellationToken);
+                
                 break;
             }
         }

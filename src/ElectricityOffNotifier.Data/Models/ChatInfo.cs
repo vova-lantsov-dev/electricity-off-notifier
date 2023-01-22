@@ -16,5 +16,5 @@ public sealed class ChatInfo
     [Required, Column("message_down_template")]
     public string MessageDownTemplate { get; set; }
     
-    public Subscriber Subscriber { get; set; }
+    public List<Subscriber> Subscribers { get; set; }
 }
