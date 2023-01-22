@@ -22,6 +22,20 @@ internal sealed class BotUpdateHandler : IUpdateHandler
     
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        {
+            // Verify user rights to call the commands
+            if (update is
+                {
+                    Message: { Chat.Type: ChatType.Group or ChatType.Supergroup, Chat.Id: var chatId, From.Id: var fromId }
+                })
+            {
+                ChatMember chatMember = await botClient.GetChatMemberAsync(chatId, fromId, cancellationToken);
+                if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
+                    return;
+            }
+        }
+
+        // Handle the commands
         switch (update)
         {
             case
@@ -128,19 +142,11 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     Text: var text and ("!down_template" or "!up_template"),
                     MessageId: var messageId,
                     ReplyToMessage.Text: { } replyMessageText,
-                    Chat: { Id: var chatId, Type: var chatType },
-                    From.Id: var fromId,
+                    Chat.Id: var chatId,
                     MessageThreadId: var messageThreadId
                 }
             }:
             {
-                if (chatType is ChatType.Group or ChatType.Supergroup)
-                {
-                    ChatMember chatMember = await botClient.GetChatMemberAsync(chatId, fromId, cancellationToken);
-                    if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
-                        return;
-                }
-                
                 if (!_templateService.ValidateMessageTemplate(replyMessageText))
                 {
                     try
