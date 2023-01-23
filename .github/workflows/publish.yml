@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: prod
     steps:
     - uses: actions/checkout@v3
     - name: Setup .NET
@@ -20,6 +21,7 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
+    environment: prod
     needs: [build]
     steps:
     - uses: actions/checkout@v3
@@ -31,7 +33,7 @@ jobs:
         REMOTE_USER: ${{ secrets.SSH_USER }}
         REMOTE_PORT: ${{ secrets.SSH_PORT }}
         TARGET: ${{ secrets.SSH_TARGET_DIR }}
-        EXCLUDE: "/.git/"
+        EXCLUDE: "/.git/, /.github/"
         SCRIPT_AFTER: |
           cd ${{ secrets.SSH_TARGET_DIR }}
           

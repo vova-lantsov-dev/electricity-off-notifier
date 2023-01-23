@@ -1,0 +1,48 @@
+﻿name: Publish Dev
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  build-dev:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 6.0.x
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+
+  publish-dev:
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: [build-dev]
+    steps:
+      - uses: actions/checkout@v3
+      - name: SSH deploy
+        uses: easingthemes/ssh-deploy@v4.0.5
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SSH_HOST }}
+          REMOTE_USER: ${{ secrets.SSH_USER }}
+          REMOTE_PORT: ${{ secrets.SSH_PORT }}
+          TARGET: ${{ secrets.SSH_TARGET_DIR }}
+          EXCLUDE: "/.git/, /.github/"
+          SCRIPT_AFTER: |
+            cd ${{ secrets.SSH_TARGET_DIR }}
+            
+            # Fill the environment variables
+            echo "Auth__SecretKey='${{ secrets.AUTH_SECRET_KEY }}'" > ".env"
+            echo "Bot__Token='${{ secrets.TELEGRAM_BOT_TOKEN }}'" >> ".env"
+            echo "ConnectionStrings__ElectricityConnectionString='${{ secrets.ELECTRICITY_CONNECTION_STRING }}'" >> ".env"
+            echo "ConnectionStrings__HangfireConnectionString='${{ secrets.HANGFIRE_CONNECTION_STRING }}'" >> ".env"
+            
+            sudo docker compose -p "electricity-off-notifier-dev" -f "docker-compose.dev.yml" down
+            sudo docker compose -p "electricity-off-notifier-dev" -f "docker-compose.dev.yml" up --build -d

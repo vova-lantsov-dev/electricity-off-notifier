@@ -1,0 +1,22 @@
+﻿version: '3.9'
+
+x-restart-policy: &restart_policy
+  restart: unless-stopped
+
+x-host-config: &host_config
+  environment:
+    - ASPNETCORE_URLS=http://+:80
+    - ASPNETCORE_ENVIRONMENT=Development
+  ports:
+    - "5084:80"
+  env_file: .env
+
+services:
+  host:
+    << : *restart_policy
+    << : *host_config
+    build:
+      context: .
+      dockerfile: src/ElectricityOffNotifier.AppHost/Dockerfile
+    image: electricity-off-notifier/host:dev
+    container_name: electricity-off-notifier-host-dev
