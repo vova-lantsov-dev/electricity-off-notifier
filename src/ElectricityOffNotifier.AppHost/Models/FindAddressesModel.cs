@@ -1,14 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElectricityOffNotifier.AppHost.Models;
 
 public sealed class FindAddressesModel
 {
-	[Range(1, int.MaxValue), FromQuery(Name = "cityId")]
+	[FromQuery(Name = "cityId")]
 	public int CityId { get; set; }
-	[Required, RegularExpression("^[а-яА-Яa-zA-ZїЇєЄґҐ0-9- .']+$"), FromQuery(Name = "street")]
+	[FromQuery(Name = "street")]
 	public string Street { get; set; }
-	[Required, RegularExpression("^[0-9a-zA-Zа-яА-Я- /]+$"), FromQuery(Name = "buildingNo")]
-	public string BuildingNo { get; set; }
+	[FromQuery(Name = "buildingNo")]
+	public string? BuildingNo { get; set; }
+}
+
+public sealed class FindAddressesModelValidator : AbstractValidator<FindAddressesModel>
+{
+	public FindAddressesModelValidator()
+	{
+		RuleFor(m => m.CityId).GreaterThanOrEqualTo(1);
+		RuleFor(m => m.Street).NotNull().Matches("^[а-яА-Яa-zA-ZїЇєЄґҐ0-9- .']+$");
+		RuleFor(m => m.BuildingNo).Matches("^[0-9a-zA-Zа-яА-Я-\\/]+$");
+	}
 }

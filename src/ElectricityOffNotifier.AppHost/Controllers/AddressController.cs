@@ -1,5 +1,8 @@
-﻿using ElectricityOffNotifier.AppHost.Models;
+﻿using ElectricityOffNotifier.AppHost.Helpers;
+using ElectricityOffNotifier.AppHost.Models;
 using ElectricityOffNotifier.Data;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +13,12 @@ namespace ElectricityOffNotifier.AppHost.Controllers;
 public sealed class AddressController : ControllerBase
 {
 	private readonly ElectricityDbContext _context;
+	private readonly IValidator<FindAddressesModel> _findAddressesModelValidator;
 
-	public AddressController(ElectricityDbContext context)
+	public AddressController(ElectricityDbContext context, IValidator<FindAddressesModel> findAddressesModelValidator)
 	{
 		_context = context;
+		_findAddressesModelValidator = findAddressesModelValidator;
 	}
 
 	[HttpGet]
@@ -21,6 +26,11 @@ public sealed class AddressController : ControllerBase
 		[FromQuery] FindAddressesModel model,
 		CancellationToken cancellationToken)
 	{
+		ValidationResult validationResult = _findAddressesModelValidator.Validate(model);
+		
+		if (!validationResult.IsValid)
+			return this.BadRequestExt(validationResult);
+
 		return await _context.Addresses
 			.AsNoTracking()
 			.Where(a => EF.Functions.ILike(a.Street, $"%{model.Street}%") &&

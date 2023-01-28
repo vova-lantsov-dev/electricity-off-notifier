@@ -1,9 +1,12 @@
 ﻿using System.Globalization;
 using System.Security.Claims;
 using ElectricityOffNotifier.AppHost.Auth;
+using ElectricityOffNotifier.AppHost.Helpers;
 using ElectricityOffNotifier.AppHost.Models;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,19 +24,26 @@ public sealed class SubscriberController : ControllerBase
     private readonly ElectricityDbContext _context;
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<SubscriberController> _logger;
+    private readonly IValidator<SubscriberRegisterModel> _subscriberRegisterModelValidator;
 
     public SubscriberController(ElectricityDbContext context, ITelegramBotClient botClient,
-        ILogger<SubscriberController> logger)
+        ILogger<SubscriberController> logger, IValidator<SubscriberRegisterModel> subscriberRegisterModelValidator)
     {
         _context = context;
         _botClient = botClient;
         _logger = logger;
+        _subscriberRegisterModelValidator = subscriberRegisterModelValidator;
     }
 
     [HttpPost]
     public async Task<ActionResult<SubscriberModel>> Register([FromBody] SubscriberRegisterModel model,
         CancellationToken cancellationToken)
     {
+        ValidationResult validationResult = _subscriberRegisterModelValidator.Validate(model);
+
+        if (!validationResult.IsValid)
+            return this.BadRequestExt(validationResult);
+        
         int checkerId = int.Parse(User.FindFirstValue(CustomClaimTypes.CheckerId));
         int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 

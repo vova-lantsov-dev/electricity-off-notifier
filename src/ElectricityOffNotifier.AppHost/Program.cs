@@ -3,6 +3,7 @@ using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.AppHost.Options;
 using ElectricityOffNotifier.AppHost.Services;
 using ElectricityOffNotifier.Data;
+using FluentValidation;
 using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.PostgreSql;
@@ -22,6 +23,7 @@ builder.Configuration.AddJsonFile("setup.json", optional: true, reloadOnChange: 
 
 // Configure services
 builder.Services.AddControllers();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 string hangfireConnStr = builder.Configuration.GetConnectionString("HangfireConnectionString");
 builder.Services.AddHangfire(configuration => configuration

@@ -1,8 +1,10 @@
 ﻿using ElectricityOffNotifier.AppHost.Auth;
+using ElectricityOffNotifier.AppHost.Helpers;
 using ElectricityOffNotifier.AppHost.Models;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
-using ElectricityOffNotifier.Data.Models.Enums;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PasswordGenerator;
@@ -15,6 +17,7 @@ public sealed class ProducerController : ControllerBase
 {
 	private readonly ElectricityDbContext _context;
 	private readonly IConfiguration _configuration;
+	private readonly IValidator<ProducerRegisterModel> _producerRegisterModelValidator;
 
 	private readonly Password _accessTokenGenerator = new(
 		includeLowercase: true,
@@ -23,32 +26,21 @@ public sealed class ProducerController : ControllerBase
 		includeSpecial: false,
 		passwordLength: 20);
 
-	public ProducerController(ElectricityDbContext context, IConfiguration configuration)
+	public ProducerController(ElectricityDbContext context, IConfiguration configuration,
+		IValidator<ProducerRegisterModel> producerRegisterModelValidator)
 	{
 		_context = context;
 		_configuration = configuration;
+		_producerRegisterModelValidator = producerRegisterModelValidator;
 	}
 	
 	[HttpPost]
 	public async Task<ActionResult> Register([FromBody] ProducerRegisterModel model, CancellationToken cancellationToken)
 	{
-		if (!await _context.Addresses.AnyAsync(a => a.Id == model.AddressId, cancellationToken))
-		{
-			ModelState.AddModelError(nameof(model.AddressId), "Address with specified id was not found.");
-			return BadRequest(ModelState);
-		}
+		ValidationResult validationResult = await _producerRegisterModelValidator.ValidateAsync(model, cancellationToken);
 
-		switch (model)
-		{
-			case { Mode: ProducerMode.Webhook, WebhookUrl: null }:
-				ModelState.AddModelError(nameof(model.WebhookUrl),
-					$"Webhook URL must be set when '{nameof(ProducerMode.Webhook)}' mode is specified.");
-				return BadRequest(ModelState);
-			case { Mode: not ProducerMode.Webhook, WebhookUrl: not null }:
-				ModelState.AddModelError(nameof(model.WebhookUrl),
-					$"Webhook URL is allowed only when '{nameof(ProducerMode.Webhook)}' mode is specified.");
-				return BadRequest(ModelState);
-		}
+		if (!validationResult.IsValid)
+			return this.BadRequestExt(validationResult);
 
 		string accessToken = _accessTokenGenerator.Next();
 		byte[] accessTokenSha256Hash = accessToken.ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]);

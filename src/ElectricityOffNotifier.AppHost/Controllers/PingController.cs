@@ -27,7 +27,7 @@ public sealed class PingController : ControllerBase
 		int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 		int checkerId = int.Parse(User.FindFirstValue(CustomClaimTypes.CheckerId));
 
-		var producer = await _context.Producers
+		Producer producer = await _context.Producers
 			.Select(c => new Producer {Id = c.Id, IsEnabled = c.IsEnabled, Mode = c.Mode})
 			.FirstAsync(c => c.Id == producerId);
 
