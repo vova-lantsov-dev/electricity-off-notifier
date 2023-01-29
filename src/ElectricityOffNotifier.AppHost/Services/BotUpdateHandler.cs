@@ -285,7 +285,7 @@ internal sealed class BotUpdateHandler : IUpdateHandler
             when text.StartsWith("!skip ") && isAdmin:
             {
                 string[] separated = text[6..].Split(' ');
-                if (separated.Length != 3 || !int.TryParse(separated[0], out int producerId))
+                if (separated.Length != 2 || !int.TryParse(separated[0], out int producerId))
                 {
                     try
                     {
@@ -305,23 +305,10 @@ internal sealed class BotUpdateHandler : IUpdateHandler
 
                 Producer? producer = await context.Producers
                     .Include(ci => ci.Subscribers.OrderByDescending(s => s.Id).Take(1))
-                    .FirstOrDefaultAsync(ci => ci.Id == producerId, cancellationToken);
+                    .FirstOrDefaultAsync(
+                        ci => ci.AccessTokenHash ==
+                              separated[1].ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]!), cancellationToken);
                 if (producer == null)
-                {
-                    try
-                    {
-                        await botClient.SendTextMessageAsync(chatId, "Не вдалося знайти вказанного producer-а.",
-                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
-                    }
-
-                    return;
-                }
-
-                if (producer.AccessTokenHash != separated[1].ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]!))
                 {
                     try
                     {
@@ -332,24 +319,20 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     {
                         _logger.LogDebug(ex, "Error occurred while sending Telegram message");
                     }
-                    
+
                     return;
                 }
 
-                string cultureName = "uk-UA", timeZone = "Europe/Kiev";
-                if (producer.Subscribers.FirstOrDefault() is { } subscriber)
-                {
-                    cultureName = subscriber.Culture;
-                    timeZone = subscriber.TimeZone;
-                }
-                
+                string cultureName = producer.Subscribers.FirstOrDefault() is { } subscriber
+                    ? subscriber.Culture
+                    : "uk-UA";
                 IFormatProvider culture = TemplateService.GetCulture(cultureName);
 
-                if (!DateTime.TryParse(separated[2], culture, DateTimeStyles.AllowWhiteSpaces, out DateTime dateTime))
+                if (!TimeSpan.TryParse(separated[2], culture, out TimeSpan timeSpan))
                 {
                     try
                     {
-                        await botClient.SendTextMessageAsync(chatId, "Не вдається прочитати дату з повідомлення",
+                        await botClient.SendTextMessageAsync(chatId, "Не вдається прочитати тривалість з повідомлення",
                             messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
                     }
                     catch (Exception ex)
@@ -363,7 +346,7 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                 var updatedProducer = new Producer
                 {
                     Id = producerId,
-                    SkippedUntil = TemplateService.GetUtcTime(dateTime, timeZone)
+                    SkippedUntil = DateTime.UtcNow + timeSpan
                 };
                 context.Attach(updatedProducer).Property(p => p.SkippedUntil).IsModified = true;
 

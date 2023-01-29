@@ -73,13 +73,6 @@ internal sealed class TemplateService : ITemplateService
         return TimeZoneInfo.ConvertTime(utcTime, tz);
     }
 
-    internal static DateTime GetUtcTime(DateTime localTime, string timeZone)
-    {
-        TimeZoneInfo sourceTimeZone = TimeZones.GetOrAdd(timeZone, CreateTimeZoneFactory).Value;
-
-        return TimeZoneInfo.ConvertTimeToUtc(localTime, sourceTimeZone);
-    }
-
     internal static IFormatProvider GetCulture(string cultureName)
     {
         return Cultures
