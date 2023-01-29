@@ -47,6 +47,14 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		}
 	}
 
+	public void AddWebhookProducer(int checkerId, int webhookProducerId)
+	{
+		_recurringJobManager.AddOrUpdate(
+			$"c{checkerId}-p{webhookProducerId}-webhook",
+			() => ProcessWebhookAsync(webhookProducerId, CancellationToken.None),
+			"*/15 * * * * *");
+	}
+
 	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
 	{
 		if (DateTime.Now - StartupTime < TimeSpan.FromMinutes(1))

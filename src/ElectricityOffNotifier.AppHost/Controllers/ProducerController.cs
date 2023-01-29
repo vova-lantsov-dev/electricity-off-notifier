@@ -1,8 +1,10 @@
 ﻿using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.AppHost.Helpers;
 using ElectricityOffNotifier.AppHost.Models;
+using ElectricityOffNotifier.AppHost.Services;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
+using ElectricityOffNotifier.Data.Models.Enums;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +20,7 @@ public sealed class ProducerController : ControllerBase
 	private readonly ElectricityDbContext _context;
 	private readonly IConfiguration _configuration;
 	private readonly IValidator<ProducerRegisterModel> _producerRegisterModelValidator;
+	private readonly IElectricityCheckerManager _electricityCheckerManager;
 
 	private readonly Password _accessTokenGenerator = new(
 		includeLowercase: true,
@@ -26,12 +29,16 @@ public sealed class ProducerController : ControllerBase
 		includeSpecial: false,
 		passwordLength: 20);
 
-	public ProducerController(ElectricityDbContext context, IConfiguration configuration,
-		IValidator<ProducerRegisterModel> producerRegisterModelValidator)
+	public ProducerController(
+		ElectricityDbContext context,
+		IConfiguration configuration,
+		IValidator<ProducerRegisterModel> producerRegisterModelValidator,
+		IElectricityCheckerManager electricityCheckerManager)
 	{
 		_context = context;
 		_configuration = configuration;
 		_producerRegisterModelValidator = producerRegisterModelValidator;
+		_electricityCheckerManager = electricityCheckerManager;
 	}
 	
 	[HttpPost]
@@ -60,6 +67,8 @@ public sealed class ProducerController : ControllerBase
 			.Where(c => c.AddressId == model.AddressId)
 			.Select(c => new Checker {Id = c.Id})
 			.FirstOrDefaultAsync(cancellationToken);
+		bool existingChecker = checker != null;
+		
 		if (checker == null)
 		{
 			checker = new Checker
@@ -79,6 +88,19 @@ public sealed class ProducerController : ControllerBase
 		}
 
 		await _context.SaveChangesAsync(CancellationToken.None);
+		
+		if (!existingChecker)
+		{
+			_electricityCheckerManager.StartChecker(checker.Id, model.Mode switch
+			{
+				ProducerMode.Webhook => new[] { producer.Id },
+				_ => Array.Empty<int>()
+			});
+		}
+		else if (model.Mode == ProducerMode.Webhook)
+		{
+			_electricityCheckerManager.AddWebhookProducer(checker.Id, producer.Id);
+		}
 
 		return Ok(new { accessToken });
 	}
