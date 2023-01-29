@@ -285,7 +285,7 @@ internal sealed class BotUpdateHandler : IUpdateHandler
             when text.StartsWith("!skip ") && isAdmin:
             {
                 string[] separated = text[6..].Split(' ');
-                if (separated.Length != 2 || !int.TryParse(separated[0], out int producerId))
+                if (separated.Length != 2)
                 {
                     try
                     {
@@ -304,10 +304,11 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                 var context = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
                 Producer? producer = await context.Producers
+                    .AsNoTracking()
                     .Include(ci => ci.Subscribers.OrderByDescending(s => s.Id).Take(1))
                     .FirstOrDefaultAsync(
                         ci => ci.AccessTokenHash ==
-                              separated[1].ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]!), cancellationToken);
+                              separated[0].ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]!), cancellationToken);
                 if (producer == null)
                 {
                     try
@@ -328,7 +329,7 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                     : "uk-UA";
                 IFormatProvider culture = TemplateService.GetCulture(cultureName);
 
-                if (!TimeSpan.TryParse(separated[2], culture, out TimeSpan timeSpan))
+                if (!TimeSpan.TryParse(separated[1], culture, out TimeSpan timeSpan))
                 {
                     try
                     {
@@ -345,7 +346,7 @@ internal sealed class BotUpdateHandler : IUpdateHandler
 
                 var updatedProducer = new Producer
                 {
-                    Id = producerId,
+                    Id = producer.Id,
                     SkippedUntil = DateTime.UtcNow + timeSpan
                 };
                 context.Attach(updatedProducer).Property(p => p.SkippedUntil).IsModified = true;
