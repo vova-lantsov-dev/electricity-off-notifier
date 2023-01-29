@@ -68,10 +68,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			.Include(c => c.Entries.OrderByDescending(e => e.DateTime).Take(1))
 			.Include(c => c.Address)
 			.ThenInclude(a => a.City)
-			.Include(c => c.Producers.Select(p => new Producer
-			{
-				SkippedUntil = p.SkippedUntil
-			}))
+			.Include(c => c.Producers)
 			.FirstAsync(c => c.Id == checkerId, cancellationToken);
 
 		_logger.LogDebug("Checker {CheckerId} has {EntriesCount} entries", checkerId, checker.Entries.Count);
