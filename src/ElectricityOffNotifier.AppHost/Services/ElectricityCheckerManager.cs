@@ -81,8 +81,9 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 
 		{
 			DateTime now = DateTime.UtcNow;
-			if (checker.Producers.All(p => p.SkippedUntil > now))
+			if (checker.Producers.Count > 0 && checker.Producers.All(p => p.SkippedUntil > now))
 			{
+				_logger.LogDebug("Checker {CheckerId} has only skipped producers", checkerId);
 				return;
 			}
 		}
