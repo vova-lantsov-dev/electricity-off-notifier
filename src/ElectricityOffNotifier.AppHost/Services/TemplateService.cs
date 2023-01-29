@@ -68,18 +68,18 @@ internal sealed class TemplateService : ITemplateService
 
     private static DateTime GetLocalTime(DateTime utcTime, string timeZone)
     {
-        static Lazy<TimeZoneInfo> CreateTimeZoneFactory(string timeZone) =>
-            new(() => TZConvert.GetTimeZoneInfo(timeZone));
-
         TimeZoneInfo tz = TimeZones.GetOrAdd(timeZone, CreateTimeZoneFactory).Value;
 
         return TimeZoneInfo.ConvertTime(utcTime, tz);
     }
 
-    private static IFormatProvider GetCulture(string cultureName)
+    internal static IFormatProvider GetCulture(string cultureName)
     {
         return Cultures
             .GetOrAdd(cultureName, c => new Lazy<IFormatProvider>(() => new CultureInfo(c)))
             .Value;
     }
+    
+    private static Lazy<TimeZoneInfo> CreateTimeZoneFactory(string timeZone) =>
+        new(() => TZConvert.GetTimeZoneInfo(timeZone));
 }

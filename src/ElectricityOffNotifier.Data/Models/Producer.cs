@@ -18,6 +18,8 @@ public sealed class Producer
 	public ProducerMode Mode { get; set; }
 	[Column("webhook_url")]
 	public string? WebhookUrl { get; set; }
+	[Column("skipped_until", TypeName = "timestamp")]
+	public DateTime SkippedUntil { get; set; }
 
 	[Column("checker_id")]
 	public int CheckerId { get; set; }

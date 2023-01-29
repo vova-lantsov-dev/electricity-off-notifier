@@ -47,6 +47,14 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		}
 	}
 
+	public void AddWebhookProducer(int checkerId, int webhookProducerId)
+	{
+		_recurringJobManager.AddOrUpdate(
+			$"c{checkerId}-p{webhookProducerId}-webhook",
+			() => ProcessWebhookAsync(webhookProducerId, CancellationToken.None),
+			"*/15 * * * * *");
+	}
+
 	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
 	{
 		if (DateTime.Now - StartupTime < TimeSpan.FromMinutes(1))
@@ -60,12 +68,22 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 			.Include(c => c.Entries.OrderByDescending(e => e.DateTime).Take(1))
 			.Include(c => c.Address)
 			.ThenInclude(a => a.City)
+			.Include(c => c.Producers)
 			.FirstAsync(c => c.Id == checkerId, cancellationToken);
 
 		_logger.LogDebug("Checker {CheckerId} has {EntriesCount} entries", checkerId, checker.Entries.Count);
 
 		if (checker.Entries.Count < 1)
 			return;
+
+		{
+			DateTime now = DateTime.UtcNow;
+			if (checker.Producers.Count > 0 && checker.Producers.All(p => p.SkippedUntil > now))
+			{
+				_logger.LogDebug("Checker {CheckerId} has only skipped producers", checkerId);
+				return;
+			}
+		}
 
 		async Task LoadSubscribersAsync()
 		{

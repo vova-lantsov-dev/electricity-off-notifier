@@ -36,6 +36,13 @@ public class ElectricityDbContext : DbContext
 			.HasConversion(
 				dt => DateTime.SpecifyKind(dt, DateTimeKind.Unspecified),
 				dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc));
+		
+		modelBuilder
+			.Entity<Producer>()
+			.Property(ce => ce.SkippedUntil)
+			.HasConversion(
+				dt => DateTime.SpecifyKind(dt, DateTimeKind.Unspecified),
+				dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc));
 
 		modelBuilder.Entity<Producer>()
 			.Property(p => p.Mode)
@@ -50,5 +57,9 @@ public class ElectricityDbContext : DbContext
 			entity.Property(ci => ci.MessageDownTemplate)
 				.HasDefaultValue("Повідомлення за адресою <b>{{Address}}</b>:\n\n<b>Електропостачання відсутнє!</b>\n{{#SinceRegion}}\nЧас початку відключення: {{SinceDate}}\nСвітло було протягом {{DurationHours}} год. {{DurationMinutes}} хв.\n{{/SinceRegion}}");
 		});
+
+		modelBuilder.Entity<Producer>()
+			.Property(p => p.SkippedUntil)
+			.HasDefaultValue(DateTime.UnixEpoch);
 	}
 }
