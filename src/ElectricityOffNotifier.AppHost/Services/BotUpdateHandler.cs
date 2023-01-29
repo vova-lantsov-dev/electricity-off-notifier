@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
+using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
 using Microsoft.EntityFrameworkCore;
@@ -14,13 +16,15 @@ internal sealed class BotUpdateHandler : IUpdateHandler
     private readonly IServiceProvider _serviceProvider;
     private readonly ITemplateService _templateService;
     private readonly ILogger<BotUpdateHandler> _logger;
+    private readonly IConfiguration _configuration;
 
     public BotUpdateHandler(IServiceProvider serviceProvider, ITemplateService templateService,
-        ILogger<BotUpdateHandler> logger)
+        ILogger<BotUpdateHandler> logger, IConfiguration configuration)
     {
         _serviceProvider = serviceProvider;
         _templateService = templateService;
         _logger = logger;
+        _configuration = configuration;
     }
     
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -255,8 +259,115 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                 msgToSend.AppendJoin("\n", chatInfo.Subscribers.Select((s, i) =>
                     $"{i + 1}) Subscriber id: {s.Id}\nCulture: {s.Culture}\nTime zone: {s.TimeZone}\nProducer mode: {s.Producer.Mode:G}\nProducer id: {s.Producer.Id}\nProducer enabled: {s.Producer.IsEnabled}"));
 
-                await botClient.SendTextMessageAsync(chatId, msgToSend.ToString(), messageThreadId,
-                    replyToMessageId: messageId, cancellationToken: cancellationToken);
+                try
+                {
+                    await botClient.SendTextMessageAsync(chatId, msgToSend.ToString(), messageThreadId,
+                        replyToMessageId: messageId, cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                }
+
+                break;
+            }
+
+            case
+            {
+                Message:
+                {
+                    Text: { Length: > 7 } text,
+                    MessageId: var messageId,
+                    Chat.Id: var chatId,
+                    MessageThreadId: var messageThreadId
+                }
+            }
+            when text.StartsWith("!skip ") && isAdmin:
+            {
+                string[] separated = text[6..].Split(' ');
+                if (separated.Length != 3 || !int.TryParse(separated[0], out int producerId))
+                {
+                    try
+                    {
+                        await botClient.SendTextMessageAsync(chatId,"Неправильний формат повідомлення.",
+                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                    }
+                    
+                    return;
+                }
+                
+                await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
+                var context = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
+
+                Producer? producer = await context.Producers
+                    .Include(ci => ci.Subscribers.OrderByDescending(s => s.Id).Take(1))
+                    .FirstOrDefaultAsync(ci => ci.Id == producerId, cancellationToken);
+                if (producer == null)
+                {
+                    try
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Не вдалося знайти вказанного producer-а.",
+                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                    }
+
+                    return;
+                }
+
+                if (producer.AccessTokenHash != separated[1].ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]!))
+                {
+                    try
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Неправильний API ключ.",
+                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                    }
+                    
+                    return;
+                }
+
+                string cultureName = "uk-UA", timeZone = "Europe/Kiev";
+                if (producer.Subscribers.FirstOrDefault() is { } subscriber)
+                {
+                    cultureName = subscriber.Culture;
+                    timeZone = subscriber.TimeZone;
+                }
+                
+                IFormatProvider culture = TemplateService.GetCulture(cultureName);
+
+                if (!DateTime.TryParse(separated[2], culture, DateTimeStyles.AllowWhiteSpaces, out DateTime dateTime))
+                {
+                    try
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Не вдається прочитати дату з повідомлення",
+                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                    }
+                    
+                    return;
+                }
+
+                var updatedProducer = new Producer
+                {
+                    Id = producerId,
+                    SkippedUntil = TemplateService.GetUtcTime(dateTime, timeZone)
+                };
+                context.Attach(updatedProducer).Property(p => p.SkippedUntil).IsModified = true;
+
+                await context.SaveChangesAsync(CancellationToken.None);
                 
                 break;
             }
