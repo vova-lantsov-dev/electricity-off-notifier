@@ -10,6 +10,8 @@ public sealed class Producer
 	[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity), Column("id")]
 	public int Id { get; set; }
 	
+	[Column("name")]
+	public string? Name { get; set; }
 	[Column("access_token_hash"), Required]
 	public byte[] AccessTokenHash { get; set; }
 	[Column("is_enabled")]
