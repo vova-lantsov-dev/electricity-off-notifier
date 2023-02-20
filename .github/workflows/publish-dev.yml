@@ -43,6 +43,8 @@ jobs:
             echo "Bot__Token='${{ secrets.TELEGRAM_BOT_TOKEN }}'" >> ".env"
             echo "ConnectionStrings__ElectricityConnectionString='${{ secrets.ELECTRICITY_CONNECTION_STRING }}'" >> ".env"
             echo "ConnectionStrings__HangfireConnectionString='${{ secrets.HANGFIRE_CONNECTION_STRING }}'" >> ".env"
+            echo "DatabaseEncryptionOptions__EncryptionKey='${{ secrets.DATABASE_AES_ENCRYPTION_KEY_BASE64 }}'" >> ".env"
+            echo "DatabaseEncryptionOptions__EncryptionIV='${{ secrets.DATABASE_AES_ENCRYPTION_IV_BASE64 }}'" >> ".env"
             
             sudo docker compose -p "electricity-off-notifier-dev" -f "docker-compose.dev.yml" down
             sudo docker compose -p "electricity-off-notifier-dev" -f "docker-compose.dev.yml" up --build -d

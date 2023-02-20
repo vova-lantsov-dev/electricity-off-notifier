@@ -44,11 +44,12 @@ builder.Services.AddAuthentication(ApiKeyDefaults.AuthenticationScheme)
 	});
 builder.Services.AddAuthorization();
 
-builder.Services.AddSingleton<ITelegramBotClient>(provider =>
-{
-	var configuration = provider.GetRequiredService<IConfiguration>();
-	return new TelegramBotClient(configuration["Bot:Token"]);
-});
+// builder.Services.AddSingleton<ITelegramBotClient>(provider =>
+// {
+// 	var configuration = provider.GetRequiredService<IConfiguration>();
+// 	return new TelegramBotClient(configuration["Bot:Token"]);
+// });
+builder.Services.AddSingleton<ITelegramBotAccessor, MultiTelegramBotAccessor>();
 
 builder.Services.AddOptions<SetupOptions>()
 	.BindConfiguration("Setup")

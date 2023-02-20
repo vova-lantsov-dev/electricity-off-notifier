@@ -1,13 +1,23 @@
 ﻿using ElectricityOffNotifier.Data.Models;
 using ElectricityOffNotifier.Data.Models.Enums;
+using ElectricityOffNotifier.Data.Options;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.DataEncryption;
+using Microsoft.EntityFrameworkCore.DataEncryption.Providers;
+using Microsoft.Extensions.Options;
 
 namespace ElectricityOffNotifier.Data;
 
-public class ElectricityDbContext : DbContext
+public sealed class ElectricityDbContext : DbContext
 {
-	public ElectricityDbContext(DbContextOptions<ElectricityDbContext> options) : base(options)
+	private readonly DatabaseEncryptionOptions _encryptionOptions;
+
+	public ElectricityDbContext(
+		DbContextOptions<ElectricityDbContext> options,
+		IOptions<DatabaseEncryptionOptions> encryptionOptions)
+		: base(options)
 	{
+		_encryptionOptions = encryptionOptions.Value;
 	}
 
 	public DbSet<Address> Addresses => Set<Address>();
@@ -22,6 +32,10 @@ public class ElectricityDbContext : DbContext
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		base.OnModelCreating(modelBuilder);
+
+		byte[] encryptionKey = Convert.FromBase64String(_encryptionOptions.EncryptionKey);
+		byte[] encryptionIV = Convert.FromBase64String(_encryptionOptions.EncryptionIV);
+		modelBuilder.UseEncryption(new AesProvider(encryptionKey, encryptionIV));
 
 		modelBuilder
 			.Entity<SentNotification>()
