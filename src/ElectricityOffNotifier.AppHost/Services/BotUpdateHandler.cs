@@ -355,6 +355,78 @@ internal sealed class BotUpdateHandler : IUpdateHandler
                 
                 break;
             }
+
+            case
+            {
+                Message:
+                {
+                    Text: { Length: > 8 } text,
+                    MessageId: var messageId,
+                    Chat.Id: var chatId,
+                    MessageThreadId: var messageThreadId,
+                    From.Id: var userId
+                }
+            }
+            when text.StartsWith("!token ") && isAdmin:
+            {
+                string[] separated = text[7..].Split(' ');
+                if (separated.Length != 2 || !long.TryParse(separated[0], out long targetChatId))
+                {
+                    try
+                    {
+                        await botClient.SendTextMessageAsync(chatId,"Неправильний формат повідомлення.",
+                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                    }
+                    
+                    return;
+                }
+                
+                await using AsyncServiceScope scope = _serviceProvider.CreateAsyncScope();
+                var context = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
+
+                ChatInfo? chatInfo = await context.ChatInfo
+                    .FirstOrDefaultAsync(ci => ci.TelegramId == targetChatId, cancellationToken);
+                if (chatInfo == null)
+                {
+                    try
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Вказаний чат ще не було зареєстровано.",
+                            messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                    }
+
+                    return;
+                }
+
+                static async Task UpdateTokenAsync(ElectricityDbContext context, ChatInfo chatInfo, string token,
+                    CancellationToken cancellationToken)
+                {
+                    chatInfo.BotTokenOverride = Encoding.UTF8.GetBytes(token);
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+
+                if (chatId == targetChatId && isAdmin)
+                {
+                    await UpdateTokenAsync(context, chatInfo, separated[1], cancellationToken);
+                }
+                else
+                {
+                    ChatMember chatMember = await botClient.GetChatMemberAsync(targetChatId, userId, cancellationToken);
+                    if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
+                        break;
+
+                    await UpdateTokenAsync(context, chatInfo, separated[1], cancellationToken);
+                }
+                
+                break;
+            }
         }
     }
 
