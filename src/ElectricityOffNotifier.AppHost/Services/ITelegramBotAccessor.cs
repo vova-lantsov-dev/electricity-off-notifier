@@ -1,9 +1,8 @@
-﻿using ElectricityOffNotifier.Data.Models;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 
 namespace ElectricityOffNotifier.AppHost.Services;
 
 public interface ITelegramBotAccessor
 {
-    ValueTask<ITelegramBotClient> GetBotClientAsync(ChatInfo chatInfo, CancellationToken cancellationToken);
+    ValueTask<ITelegramBotClient> GetBotClientAsync(byte[]? tokenBytes, CancellationToken cancellationToken);
 }

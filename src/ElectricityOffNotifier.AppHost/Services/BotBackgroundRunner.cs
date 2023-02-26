@@ -30,10 +30,10 @@ public sealed class BotBackgroundRunner : BackgroundService
             chats = await context.ChatInfo.AsNoTracking().ToListAsync(stoppingToken);
         }
 
-        var receivingTasks = new List<Task>(chats.Count);
-        foreach (ChatInfo chat in chats)
+        var receivingTasks = new List<Task>();
+        foreach (byte[]? tokenBytes in chats.GroupBy(ci => ci.BotTokenOverride).Select(it => it.Key))
         {
-            ITelegramBotClient botClient = await _botAccessor.GetBotClientAsync(chat, stoppingToken);
+            ITelegramBotClient botClient = await _botAccessor.GetBotClientAsync(tokenBytes, stoppingToken);
             receivingTasks.Add(
                 botClient.ReceiveAsync(_updateHandler, cancellationToken: stoppingToken));
         }

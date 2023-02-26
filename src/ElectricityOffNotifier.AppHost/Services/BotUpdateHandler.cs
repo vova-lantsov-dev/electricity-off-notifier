@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Text;
+﻿using System.Text;
 using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;

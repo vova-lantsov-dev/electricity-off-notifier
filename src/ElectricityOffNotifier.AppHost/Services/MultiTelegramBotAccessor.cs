@@ -1,6 +1,5 @@
 ﻿using System.Collections.Concurrent;
 using System.Text;
-using ElectricityOffNotifier.Data.Models;
 using Telegram.Bot;
 
 namespace ElectricityOffNotifier.AppHost.Services;
@@ -18,12 +17,12 @@ internal sealed class MultiTelegramBotAccessor : ITelegramBotAccessor
         _httpClient = httpClientFactory.CreateClient("BotHttpClient");
     }
 
-    public async ValueTask<ITelegramBotClient> GetBotClientAsync(ChatInfo chatInfo, CancellationToken cancellationToken)
+    public async ValueTask<ITelegramBotClient> GetBotClientAsync(byte[]? tokenBytes, CancellationToken cancellationToken)
     {
-        if (chatInfo.BotTokenOverride == null)
+        if (tokenBytes == null)
             return _clients.GetOrAdd(_defaultToken, BotClientFactory);
 
-        string userDefinedToken = Encoding.UTF8.GetString(chatInfo.BotTokenOverride);
+        string userDefinedToken = Encoding.UTF8.GetString(tokenBytes);
         return _clients.GetOrAdd(userDefinedToken, BotClientFactory);
     }
 
