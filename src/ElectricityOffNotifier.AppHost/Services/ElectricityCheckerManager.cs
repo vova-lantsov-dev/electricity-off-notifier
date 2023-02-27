@@ -3,6 +3,7 @@ using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Telegram.Bot;
 
 namespace ElectricityOffNotifier.AppHost.Services;
 
@@ -12,6 +13,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ITelegramNotifier _telegramNotifier;
 	private readonly HttpClient _httpClient;
+	private readonly ITelegramBotAccessor _telegramBotAccessor;
 	private readonly ILogger<ElectricityCheckerManager> _logger;
 
 	// A time of startup that is used to postpone the checks after startup
@@ -22,12 +24,14 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		IServiceScopeFactory scopeFactory,
 		ITelegramNotifier telegramNotifier,
 		HttpClient httpClient,
+		ITelegramBotAccessor telegramBotAccessor,
 		ILogger<ElectricityCheckerManager> logger)
 	{
 		_recurringJobManager = recurringJobManager;
 		_scopeFactory = scopeFactory;
 		_telegramNotifier = telegramNotifier;
 		_httpClient = httpClient;
+		_telegramBotAccessor = telegramBotAccessor;
 		_logger = logger;
 	}
 
@@ -138,7 +142,7 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		}
 
 		// Get a method delegate that should be invoked to notify about electricity status
-		Func<SentNotification?, Address, Subscriber, CancellationToken, Task> action = isDown
+		Func<ITelegramBotClient, SentNotification?, Address, Subscriber, CancellationToken, Task> action = isDown
 			? _telegramNotifier.NotifyElectricityIsDownAsync
 			: _telegramNotifier.NotifyElectricityIsUpAsync;
 
@@ -147,7 +151,10 @@ public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 		{
 			_logger.LogDebug("Sending a Telegram notification about {Status} status to subscriber {SubscriberId}",
 				isDown ? "Down" : "Up", subscriber.Id);
-			await action(lastNotification, checker.Address, subscriber, cancellationToken);
+			
+			ITelegramBotClient botClient =
+				await _telegramBotAccessor.GetBotClientAsync(subscriber.ChatInfo.BotTokenOverride, cancellationToken);
+			await action(botClient, lastNotification, checker.Address, subscriber, cancellationToken);
 		}
 	}
 
