@@ -17,6 +17,15 @@ internal sealed class MultiTelegramBotAccessor : ITelegramBotAccessor
         _httpClient = httpClientFactory.CreateClient("BotHttpClient");
     }
 
+    public string? GetTokenByBotId(long botId)
+    {
+        foreach ((string token, ITelegramBotClient client) in _clients)
+            if (client.BotId == botId)
+                return token == _defaultToken ? null : token;
+
+        return null;
+    }
+
     public async ValueTask<ITelegramBotClient> GetBotClientAsync(byte[]? tokenBytes, CancellationToken cancellationToken)
     {
         if (tokenBytes == null)
