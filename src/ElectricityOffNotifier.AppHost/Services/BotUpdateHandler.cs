@@ -38,9 +38,15 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
 
         ChatInfo? currentChat = null;
         
+        _logger.LogDebug("Incoming request for bot {BotId} with text '{MessageText}'",
+            botClient.BotId, update.Message.Text);
+        
         string? botTokenById = _botAccessor.GetTokenByBotId(botClient.BotId.GetValueOrDefault());
         if (botTokenById != null)
         {
+            _logger.LogDebug("Non-default token is registered for bot {BotId} in chat {ChatId}",
+                botClient.BotId, chatId);
+            
             // If we get here - it means that this bot is registered to be used only in specific chats
             byte[] tokenBytes = Encoding.UTF8.GetBytes(botTokenById);
 
@@ -49,9 +55,13 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
                 .AsNoTracking()
                 .FirstOrDefaultAsync(ci => ci.BotTokenOverride == tokenBytes && ci.TelegramId == chatId,
                     cancellationToken);
-            
+
             if (currentChat == null)
+            {
+                _logger.LogDebug("Bot {BotId} is not supposed to be used in chat {ChatId}, skipping...",
+                    botClient.BotId, chatId);
                 return;
+            }
         }
 
         currentChat ??= await context.ChatInfo
@@ -70,6 +80,9 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
                 isAdmin = chatMember is { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator };
             }
         }
+        
+        _logger.LogDebug("Does user {UserId} have admin rights in chat {ChatId}: {IsAdmin}",
+            update.Message.From?.Id, chatId, isAdmin);
 
         // Handle the commands
         switch (update)
