@@ -189,6 +189,7 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception,
         CancellationToken cancellationToken)
     {
+        _logger.LogError(exception, "Error occurred while running a polling for bot {BotId}", botClient.BotId);
         return Task.CompletedTask;
     }
 }
