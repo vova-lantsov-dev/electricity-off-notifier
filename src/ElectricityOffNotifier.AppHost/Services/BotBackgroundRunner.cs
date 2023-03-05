@@ -35,7 +35,7 @@ public sealed class BotBackgroundRunner : BackgroundService
         _logger.LogInformation("Found {ChatsCount} chats on startup, registering the clients...",
             chats.Count);
 
-        var receivingTasks = new List<Task>();
+        var receivingTasks = new Dictionary<long, Task>();
         
         _logger.LogInformation("Starting a default bot client");
         await AddReceivingTaskAsync(receivingTasks, null, stoppingToken);
@@ -46,16 +46,19 @@ public sealed class BotBackgroundRunner : BackgroundService
             await AddReceivingTaskAsync(receivingTasks, tokenBytes, stoppingToken);
         }
 
-        await Task.WhenAll(receivingTasks);
+        await Task.WhenAll(receivingTasks.Values);
     }
 
-    private async Task AddReceivingTaskAsync(ICollection<Task> receivingTasks, byte[]? tokenBytes, CancellationToken cancellationToken)
+    private async Task AddReceivingTaskAsync(Dictionary<long, Task> receivingTasks, byte[]? tokenBytes, CancellationToken cancellationToken)
     {
         ITelegramBotClient botClient = await _botAccessor.GetBotClientAsync(tokenBytes, cancellationToken);
         
         _logger.LogDebug("Created a bot client for bot {BotId}", botClient.BotId);
 
-        Task receivingTask = botClient.ReceiveAsync(_updateHandler, cancellationToken: cancellationToken);
-        receivingTasks.Add(receivingTask);
+        if (!receivingTasks.ContainsKey(botClient.BotId!.Value))
+        {
+            Task receivingTask = botClient.ReceiveAsync(_updateHandler, cancellationToken: cancellationToken);
+            receivingTasks.Add(botClient.BotId.Value, receivingTask);
+        }
     }
 }
