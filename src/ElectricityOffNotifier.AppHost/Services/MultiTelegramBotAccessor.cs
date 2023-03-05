@@ -26,13 +26,13 @@ internal sealed class MultiTelegramBotAccessor : ITelegramBotAccessor
         return null;
     }
 
-    public async ValueTask<ITelegramBotClient> GetBotClientAsync(byte[]? tokenBytes, CancellationToken cancellationToken)
+    public ValueTask<ITelegramBotClient> GetBotClientAsync(byte[]? tokenBytes, CancellationToken cancellationToken)
     {
         if (tokenBytes == null)
-            return _clients.GetOrAdd(_defaultToken, BotClientFactory);
+            return ValueTask.FromResult(_clients.GetOrAdd(_defaultToken, BotClientFactory));
 
         string userDefinedToken = Encoding.UTF8.GetString(tokenBytes);
-        return _clients.GetOrAdd(userDefinedToken, BotClientFactory);
+        return ValueTask.FromResult(_clients.GetOrAdd(userDefinedToken, BotClientFactory));
     }
 
     private ITelegramBotClient BotClientFactory(string token) => new TelegramBotClient(token, _httpClient);
