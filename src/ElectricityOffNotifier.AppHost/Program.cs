@@ -57,7 +57,9 @@ builder.Services.AddOptions<SetupOptions>()
 builder.Services.AddHostedService<SetupStartupService>();
 
 builder.Services.AddSingleton<IUpdateHandler, BotUpdateHandler>();
-builder.Services.AddHostedService<BotBackgroundRunner>();
+builder.Services.AddSingleton<BotBackgroundRunner>();
+builder.Services.AddSingleton<IBotManager>(provider => provider.GetRequiredService<BotBackgroundRunner>());
+builder.Services.AddHostedService(provider => provider.GetRequiredService<BotBackgroundRunner>());
 
 builder.Services.AddSingleton<ITemplateService, TemplateService>();
 builder.Services.AddSingleton<ITelegramNotifier, TelegramNotifier>();

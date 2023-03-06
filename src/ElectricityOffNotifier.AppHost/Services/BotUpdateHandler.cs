@@ -16,15 +16,18 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
     private readonly ILogger<BotUpdateHandler> _logger;
     private readonly IConfiguration _configuration;
     private readonly ITelegramBotAccessor _botAccessor;
+    private readonly IBotManager _botManager;
 
     public BotUpdateHandler(IServiceScopeFactory serviceScopeFactory, ITemplateService templateService,
-        ILogger<BotUpdateHandler> logger, IConfiguration configuration, ITelegramBotAccessor botAccessor)
+        ILogger<BotUpdateHandler> logger, IConfiguration configuration, ITelegramBotAccessor botAccessor,
+        IBotManager botManager)
     {
         _serviceScopeFactory = serviceScopeFactory;
         _templateService = templateService;
         _logger = logger;
         _configuration = configuration;
         _botAccessor = botAccessor;
+        _botManager = botManager;
     }
     
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)

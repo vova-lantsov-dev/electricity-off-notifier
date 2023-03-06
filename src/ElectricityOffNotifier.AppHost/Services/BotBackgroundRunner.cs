@@ -6,12 +6,16 @@ using Telegram.Bot.Polling;
 
 namespace ElectricityOffNotifier.AppHost.Services;
 
-public sealed class BotBackgroundRunner : BackgroundService
+public sealed class BotBackgroundRunner : BackgroundService, IBotManager
 {
     private readonly ITelegramBotAccessor _botAccessor;
     private readonly IUpdateHandler _updateHandler;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<BotBackgroundRunner> _logger;
+    private readonly TaskCompletionSource _completionSource = new(TaskCreationOptions.LongRunning);
+    private readonly Dictionary<long, Task> _receivingTasks = new();
+
+    private CancellationToken _cancellationToken;
 
     public BotBackgroundRunner(ITelegramBotAccessor botAccessor, IUpdateHandler updateHandler,
         IServiceScopeFactory serviceScopeFactory, ILogger<BotBackgroundRunner> logger)
@@ -24,6 +28,7 @@ public sealed class BotBackgroundRunner : BackgroundService
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _cancellationToken = stoppingToken;
         List<ChatInfo> chats;
 
         await using (AsyncServiceScope scope = _serviceScopeFactory.CreateAsyncScope())
@@ -34,31 +39,39 @@ public sealed class BotBackgroundRunner : BackgroundService
         
         _logger.LogInformation("Found {ChatsCount} chats on startup, registering the clients...",
             chats.Count);
-
-        var receivingTasks = new Dictionary<long, Task>();
         
         _logger.LogInformation("Starting a default bot client");
-        await AddReceivingTaskAsync(receivingTasks, null, stoppingToken);
+        await AddReceivingTaskAsync(null, stoppingToken);
         
         _logger.LogInformation("Starting custom bot clients");
         foreach (byte[]? tokenBytes in chats.GroupBy(ci => ci.BotTokenOverride).Select(it => it.Key))
         {
-            await AddReceivingTaskAsync(receivingTasks, tokenBytes, stoppingToken);
+            await AddReceivingTaskAsync(tokenBytes, stoppingToken);
         }
+        
+        stoppingToken.ThrowIfCancellationRequested();
+        
+        stoppingToken.Register(() => _completionSource.SetResult());
+        await _completionSource.Task;
 
-        await Task.WhenAll(receivingTasks.Values);
+        await Task.WhenAll(_receivingTasks.Values);
     }
 
-    private async Task AddReceivingTaskAsync(Dictionary<long, Task> receivingTasks, byte[]? tokenBytes, CancellationToken cancellationToken)
+    private async Task AddReceivingTaskAsync(byte[]? tokenBytes, CancellationToken cancellationToken)
     {
         ITelegramBotClient botClient = await _botAccessor.GetBotClientAsync(tokenBytes, cancellationToken);
         
         _logger.LogDebug("Created a bot client for bot {BotId}", botClient.BotId);
 
-        if (!receivingTasks.ContainsKey(botClient.BotId!.Value))
+        if (!_receivingTasks.ContainsKey(botClient.BotId!.Value))
         {
             Task receivingTask = botClient.ReceiveAsync(_updateHandler, cancellationToken: cancellationToken);
-            receivingTasks.Add(botClient.BotId.Value, receivingTask);
+            _receivingTasks.Add(botClient.BotId.Value, receivingTask);
         }
+    }
+
+    public async Task StartBotIfNeededAsync(byte[] botTokenBytes)
+    {
+        await AddReceivingTaskAsync(botTokenBytes, _cancellationToken);
     }
 }

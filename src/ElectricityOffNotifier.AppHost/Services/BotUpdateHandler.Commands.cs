@@ -312,5 +312,7 @@ internal sealed partial class BotUpdateHandler
 
             await UpdateTokenAsync(context, currentChat, separated[1], cancellationToken);
         }
+
+        await _botManager.StartBotIfNeededAsync(currentChat.BotTokenOverride!);
     }
 }
