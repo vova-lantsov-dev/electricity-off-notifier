@@ -277,15 +277,15 @@ internal sealed partial class BotUpdateHandler
         }
 
         string token = separated[1];
+        byte[] botTokenBytes = Encoding.UTF8.GetBytes(token);
+        ITelegramBotClient newBotClient =
+            await _botAccessor.GetBotClientAsync(botTokenBytes, cancellationToken);
+        
         ChatInfo? targetChatInfo =
             await context.ChatInfo.FirstOrDefaultAsync(ci => ci.TelegramId == targetChatId, cancellationToken);
         
         if (targetChatInfo == null)
         {
-            byte[] botTokenBytes = Encoding.UTF8.GetBytes(token);
-            ITelegramBotClient newBotClient =
-                await _botAccessor.GetBotClientAsync(botTokenBytes, cancellationToken);
-            
             Chat targetChat;
             try
             {
@@ -311,7 +311,7 @@ internal sealed partial class BotUpdateHandler
             
             targetChatInfo = new ChatInfo
             {
-                TelegramId = chatId,
+                TelegramId = targetChatId,
                 Name = $"{targetChat.FirstName} {targetChat.LastName}".TrimEnd(),
                 BotTokenOverride = botTokenBytes
             };
@@ -320,7 +320,7 @@ internal sealed partial class BotUpdateHandler
         }
         else
         {
-            targetChatInfo.BotTokenOverride = Encoding.UTF8.GetBytes(token);
+            targetChatInfo.BotTokenOverride = botTokenBytes;
         }
 
         if (chatId == targetChatId)
@@ -334,7 +334,7 @@ internal sealed partial class BotUpdateHandler
         {
             try
             {
-                ChatMember chatMember = await botClient.GetChatMemberAsync(targetChatId, userId, cancellationToken);
+                ChatMember chatMember = await newBotClient.GetChatMemberAsync(targetChatId, userId, cancellationToken);
                 if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
                     return;
             }

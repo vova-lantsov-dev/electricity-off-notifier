@@ -79,8 +79,16 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
                     Message: { Chat.Type: ChatType.Group or ChatType.Supergroup, From.Id: var fromId }
                 })
             {
-                ChatMember chatMember = await botClient.GetChatMemberAsync(chatId, fromId, cancellationToken);
-                isAdmin = chatMember is { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator };
+                try
+                {
+                    ChatMember chatMember = await botClient.GetChatMemberAsync(chatId, fromId, cancellationToken);
+                    isAdmin = chatMember is { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Unable to get the chat member {UserId} in chat {ChatId}", fromId, chatId);
+                    return;
+                }
             }
         }
         
