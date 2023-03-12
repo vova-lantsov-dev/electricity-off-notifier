@@ -257,10 +257,10 @@ internal sealed partial class BotUpdateHandler
     }
 
     private async Task HandleTokenCommand(ITelegramBotClient botClient, string text, long chatId, int? messageThreadId,
-        int messageId, ChatInfo? currentChat, ElectricityDbContext context, bool isAdmin, long userId,
+        int messageId, ElectricityDbContext context, bool isAdmin, long userId,
         CancellationToken cancellationToken)
     {
-        string[] separated = text[7..].Split(' ');
+        string[] separated = text[7..].Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
         if (separated.Length != 2 || !long.TryParse(separated[0], out long targetChatId))
         {
             try
@@ -276,43 +276,77 @@ internal sealed partial class BotUpdateHandler
             return;
         }
 
-        if (currentChat == null)
+        string token = separated[1];
+        ChatInfo? targetChatInfo =
+            await context.ChatInfo.FirstOrDefaultAsync(ci => ci.TelegramId == targetChatId, cancellationToken);
+        
+        if (targetChatInfo == null)
         {
+            byte[] botTokenBytes = Encoding.UTF8.GetBytes(token);
+            ITelegramBotClient newBotClient =
+                await _botAccessor.GetBotClientAsync(botTokenBytes, cancellationToken);
+            
+            Chat targetChat;
             try
             {
-                await botClient.SendTextMessageAsync(chatId, "Вказаний чат ще не було зареєстровано.",
-                    messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                targetChat = await newBotClient.GetChatAsync(targetChatId, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Error occurred while sending Telegram message");
+                _logger.LogDebug(ex, "Unable to get a Telegram chat {TelegramId}", chatId);
+
+                try
+                {
+                    await botClient.SendTextMessageAsync(chatId,
+                        "Не вдалося знайти вказаний чат. Можливо, бот не був доданий до чату.",
+                        messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
+                }
+                catch (Exception ex2)
+                {
+                    _logger.LogDebug(ex2, "Error occurred while sending Telegram message");
+                }
+
+                return;
             }
-
-            return;
-        }
-
-        context.ChatInfo.Attach(currentChat);
-
-        static async Task UpdateTokenAsync(ElectricityDbContext context, ChatInfo chatInfo, string token,
-            CancellationToken cancellationToken)
-        {
-            chatInfo.BotTokenOverride = Encoding.UTF8.GetBytes(token);
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        if (chatId == targetChatId && isAdmin)
-        {
-            await UpdateTokenAsync(context, currentChat, separated[1], cancellationToken);
+            
+            targetChatInfo = new ChatInfo
+            {
+                TelegramId = chatId,
+                Name = $"{targetChat.FirstName} {targetChat.LastName}".TrimEnd(),
+                BotTokenOverride = botTokenBytes
+            };
+            
+            context.ChatInfo.Add(targetChatInfo);
         }
         else
         {
-            ChatMember chatMember = await botClient.GetChatMemberAsync(targetChatId, userId, cancellationToken);
-            if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
-                return;
-
-            await UpdateTokenAsync(context, currentChat, separated[1], cancellationToken);
+            targetChatInfo.BotTokenOverride = Encoding.UTF8.GetBytes(token);
         }
 
-        await _botManager.StartBotIfNeededAsync(this, currentChat.BotTokenOverride!, cancellationToken);
+        if (chatId == targetChatId)
+        {
+            if (!isAdmin)
+                return;
+            
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        else
+        {
+            try
+            {
+                ChatMember chatMember = await botClient.GetChatMemberAsync(targetChatId, userId, cancellationToken);
+                if (chatMember is not { Status: ChatMemberStatus.Administrator or ChatMemberStatus.Creator })
+                    return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while fetching the chat member");
+                return;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        await _botManager.StartBotIfNeededAsync(this, targetChatInfo.BotTokenOverride, cancellationToken);
     }
 }

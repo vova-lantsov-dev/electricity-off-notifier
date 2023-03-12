@@ -20,7 +20,9 @@ public sealed class BotManager : IBotManager
     {
         await AddReceivingTaskAsync(updateHandler, botTokenBytes, CancellationToken.None);
     }
-    
+
+    public IEnumerable<Task> ReceivingTasks => _receivingTasks.Values;
+
     private async Task AddReceivingTaskAsync(IUpdateHandler updateHandler, byte[]? tokenBytes, CancellationToken cancellationToken)
     {
         ITelegramBotClient botClient = await _botAccessor.GetBotClientAsync(tokenBytes, cancellationToken);

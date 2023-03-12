@@ -12,7 +12,6 @@ public sealed class BotBackgroundRunner : BackgroundService
     private readonly IBotManager _botManager;
     private readonly IUpdateHandler _updateHandler;
     private readonly TaskCompletionSource _completionSource = new();
-    private readonly Dictionary<long, Task> _receivingTasks = new();
 
     public BotBackgroundRunner(IServiceScopeFactory serviceScopeFactory, ILogger<BotBackgroundRunner> logger,
         IBotManager botManager, IUpdateHandler updateHandler)
@@ -55,6 +54,6 @@ public sealed class BotBackgroundRunner : BackgroundService
         stoppingToken.Register(() => _completionSource.SetResult());
         await _completionSource.Task;
 
-        await Task.WhenAll(_receivingTasks.Values);
+        await Task.WhenAll(_botManager.ReceivingTasks);
     }
 }

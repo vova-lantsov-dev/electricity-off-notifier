@@ -182,8 +182,8 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
             }
             when text.StartsWith("!token ") && isAdmin:
             {
-                await HandleTokenCommand(botClient, text, chatId, messageThreadId, messageId, currentChat, context,
-                    isAdmin, userId, cancellationToken);
+                await HandleTokenCommand(botClient, text, chatId, messageThreadId, messageId, context, isAdmin, userId,
+                    cancellationToken);
                 break;
             }
         }
