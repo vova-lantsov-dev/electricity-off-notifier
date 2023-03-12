@@ -15,6 +15,8 @@ public sealed class ChatInfo
     public string MessageUpTemplate { get; set; }
     [Required, Column("message_down_template")]
     public string MessageDownTemplate { get; set; }
+    [Encrypted, Column("bot_token_override")]
+    public byte[]? BotTokenOverride { get; set; }
     
     public List<Subscriber> Subscribers { get; set; }
 }

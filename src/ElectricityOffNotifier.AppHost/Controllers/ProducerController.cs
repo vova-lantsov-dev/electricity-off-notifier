@@ -59,7 +59,8 @@ public sealed class ProducerController : ControllerBase
 			AccessTokenHash = accessTokenSha256Hash,
 			IsEnabled = false,
 			Mode = model.Mode,
-			WebhookUrl = model.WebhookUrl
+			WebhookUrl = model.WebhookUrl,
+			Name = model.Name
 		};
 		
 		Checker? checker = await _context.Checkers

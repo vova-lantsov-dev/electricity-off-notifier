@@ -3,6 +3,7 @@ using System;
 using ElectricityOffNotifier.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,13 +12,14 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ElectricityOffNotifier.Data.Migrations
 {
     [DbContext(typeof(ElectricityDbContext))]
-    partial class ElectricityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230131141405_AddProducerName")]
+    partial class AddProducerName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.13")
+                .HasAnnotation("ProductVersion", "6.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -57,10 +59,6 @@ namespace ElectricityOffNotifier.Data.Migrations
                     b.Property<long>("TelegramId")
                         .HasColumnType("bigint")
                         .HasColumnName("telegram_id");
-
-                    b.Property<byte[]>("BotTokenOverride")
-                        .HasColumnType("bytea")
-                        .HasColumnName("bot_token_override");
 
                     b.Property<string>("MessageDownTemplate")
                         .IsRequired()

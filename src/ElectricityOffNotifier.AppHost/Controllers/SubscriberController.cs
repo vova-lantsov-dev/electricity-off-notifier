@@ -3,6 +3,7 @@ using System.Security.Claims;
 using ElectricityOffNotifier.AppHost.Auth;
 using ElectricityOffNotifier.AppHost.Helpers;
 using ElectricityOffNotifier.AppHost.Models;
+using ElectricityOffNotifier.AppHost.Services;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
 using FluentValidation;
@@ -22,15 +23,15 @@ namespace ElectricityOffNotifier.AppHost.Controllers;
 public sealed class SubscriberController : ControllerBase
 {
     private readonly ElectricityDbContext _context;
-    private readonly ITelegramBotClient _botClient;
+    private readonly ITelegramBotAccessor _botAccessor;
     private readonly ILogger<SubscriberController> _logger;
     private readonly IValidator<SubscriberRegisterModel> _subscriberRegisterModelValidator;
 
-    public SubscriberController(ElectricityDbContext context, ITelegramBotClient botClient,
+    public SubscriberController(ElectricityDbContext context, ITelegramBotAccessor botAccessor,
         ILogger<SubscriberController> logger, IValidator<SubscriberRegisterModel> subscriberRegisterModelValidator)
     {
         _context = context;
-        _botClient = botClient;
+        _botAccessor = botAccessor;
         _logger = logger;
         _subscriberRegisterModelValidator = subscriberRegisterModelValidator;
     }
@@ -76,24 +77,6 @@ public sealed class SubscriberController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        Chat targetChat;
-        try
-        {
-            targetChat = await _botClient.GetChatAsync(model.TelegramId, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Unable to get a Telegram chat {TelegramId}", model.TelegramId);
-            
-            ModelState.AddModelError(nameof(model.TelegramId),
-                "Unable to find the specified chat. Maybe bot was not added to it.");
-            return BadRequest(ModelState);
-        }
-
-        ChatInfo? chatInfo = await _context.ChatInfo
-            .AsNoTracking()
-            .FirstOrDefaultAsync(ci => ci.TelegramId == model.TelegramId, cancellationToken);
-
         var subscriber = new Subscriber
         {
             CheckerId = checkerId,
@@ -103,8 +86,27 @@ public sealed class SubscriberController : ControllerBase
             TimeZone = model.TimeZone,
             TelegramThreadId = model.TelegramThreadId
         };
+        
+        ChatInfo? chatInfo = await _context.ChatInfo
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ci => ci.TelegramId == model.TelegramId, cancellationToken);
         if (chatInfo == null)
         {
+            Chat targetChat;
+            try
+            {
+                ITelegramBotClient botClient = await _botAccessor.GetBotClientAsync(null, cancellationToken);
+                targetChat = await botClient.GetChatAsync(model.TelegramId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Unable to get a Telegram chat {TelegramId}", model.TelegramId);
+            
+                ModelState.AddModelError(nameof(model.TelegramId),
+                    "Unable to find the specified chat. Maybe bot was not added to it.");
+                return BadRequest(ModelState);
+            }
+            
             subscriber.ChatInfo = new ChatInfo
             {
                 TelegramId = model.TelegramId,

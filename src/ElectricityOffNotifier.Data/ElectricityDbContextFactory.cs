@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using ElectricityOffNotifier.Data.Options;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Options;
 
 namespace ElectricityOffNotifier.Data;
 
@@ -11,6 +13,13 @@ public sealed class ElectricityDbContextFactory : IDesignTimeDbContextFactory<El
             .UseNpgsql("Host=localhost;")
             .Options;
 
-        return new ElectricityDbContext(opts);
+        return new ElectricityDbContext(opts,
+            new OptionsWrapper<DatabaseEncryptionOptions>(
+                new DatabaseEncryptionOptions
+                {
+                    // Fake values to prevent BASE64 parsing error
+                    EncryptionKey = "aYgVfeWSkxXusqjNzzdiNw==",
+                    EncryptionIV = "hz1Yy4d1kVEGtN6S/P9LJA=="
+                }));
     }
 }

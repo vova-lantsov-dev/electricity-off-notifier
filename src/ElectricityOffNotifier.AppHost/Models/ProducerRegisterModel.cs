@@ -10,7 +10,8 @@ public sealed record ProducerRegisterModel(
     int AddressId,
     [property: JsonConverter(typeof(JsonStringEnumConverter))]
     ProducerMode Mode,
-    string? WebhookUrl);
+    string? WebhookUrl,
+    string? Name);
 
 public sealed class ProducerRegisterModelValidator : AbstractValidator<ProducerRegisterModel>
 {

@@ -43,6 +43,8 @@ jobs:
           echo "ConnectionStrings__ElectricityConnectionString='${{ secrets.ELECTRICITY_CONNECTION_STRING }}'" >> ".env"
           echo "ConnectionStrings__HangfireConnectionString='${{ secrets.HANGFIRE_CONNECTION_STRING }}'" >> ".env"
           echo "ApplicationInsights__ConnectionString='${{ secrets.APP_INSIGHTS_CONNECTION_STRING }}'" >> ".env"
+          echo "DatabaseEncryptionOptions__EncryptionKey='${{ secrets.DATABASE_AES_ENCRYPTION_KEY_BASE64 }}'" >> ".env"
+          echo "DatabaseEncryptionOptions__EncryptionIV='${{ secrets.DATABASE_AES_ENCRYPTION_IV_BASE64 }}'" >> ".env"
           
           sudo docker compose down
           sudo docker compose up --build -d
