@@ -11,7 +11,7 @@ namespace ElectricityOffNotifier.AppHost.Services;
 
 internal sealed partial class BotUpdateHandler
 {
-    private static async Task HandleGetIdCommand(ITelegramBotClient botClient, long chatId, int? messageThreadId,
+    private async Task HandleGetIdCommand(ITelegramBotClient botClient, long chatId, int? messageThreadId,
         int messageId, CancellationToken cancellationToken)
     {
         var messageBuilder = new StringBuilder();
@@ -30,9 +30,9 @@ internal sealed partial class BotUpdateHandler
                 replyToMessageId: messageId,
                 cancellationToken: cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // silent
+            _logger.LogDebug(ex, "Error occurred while sending Telegram message");
         }
     }
 
@@ -340,7 +340,7 @@ internal sealed partial class BotUpdateHandler
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while fetching the chat member");
+                _logger.LogDebug(ex, "Error occurred while fetching the chat member");
                 return;
             }
 

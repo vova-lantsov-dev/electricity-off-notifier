@@ -86,7 +86,7 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Unable to get the chat member {UserId} in chat {ChatId}", fromId, chatId);
+                    _logger.LogWarning(ex, "Unable to get the chat member {UserId} in chat {ChatId}", fromId, chatId);
                     return;
                 }
             }
@@ -155,7 +155,8 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
                     MessageId: var messageId,
                     MessageThreadId: var messageThreadId
                 }
-            }:
+            }
+            when isAdmin:
             {
                 await HandleInfoCommand(botClient, currentChat, chatId, messageThreadId, messageId, context, isAdmin,
                     cancellationToken);
