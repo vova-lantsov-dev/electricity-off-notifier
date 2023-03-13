@@ -45,7 +45,7 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
             botClient.BotId, update.Message.Text);
         
         string? botTokenById = _botAccessor.GetTokenByBotId(botClient.BotId.GetValueOrDefault());
-        if (botTokenById != null)
+        if (botTokenById != null && update.Message.Chat.Type != ChatType.Private)
         {
             _logger.LogDebug("Non-default token is registered for bot {BotId} in chat {ChatId}",
                 botClient.BotId, chatId);
