@@ -45,7 +45,7 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
             botClient.BotId, update.Message.Text);
         
         string? botTokenById = _botAccessor.GetTokenByBotId(botClient.BotId.GetValueOrDefault());
-        if (botTokenById != null)
+        if (botTokenById != null && update.Message.Chat.Type != ChatType.Private)
         {
             _logger.LogDebug("Non-default token is registered for bot {BotId} in chat {ChatId}",
                 botClient.BotId, chatId);
@@ -86,7 +86,7 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Unable to get the chat member {UserId} in chat {ChatId}", fromId, chatId);
+                    _logger.LogWarning(ex, "Unable to get the chat member {UserId} in chat {ChatId}", fromId, chatId);
                     return;
                 }
             }
@@ -155,7 +155,8 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
                     MessageId: var messageId,
                     MessageThreadId: var messageThreadId
                 }
-            }:
+            }
+            when isAdmin:
             {
                 await HandleInfoCommand(botClient, currentChat, chatId, messageThreadId, messageId, context, isAdmin,
                     cancellationToken);
