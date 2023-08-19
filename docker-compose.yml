@@ -13,8 +13,7 @@ x-host-config: &host_config
 
 services:
   host:
-    << : *restart_policy
-    << : *host_config
+    << : [*restart_policy, *host_config]
     build:
       context: .
       dockerfile: src/ElectricityOffNotifier.AppHost/Dockerfile
