@@ -8,7 +8,6 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
-using Telegram.Bot;
 using Telegram.Bot.Polling;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,12 +24,14 @@ builder.Configuration.AddJsonFile("setup.json", optional: true, reloadOnChange: 
 builder.Services.AddControllers();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-string hangfireConnStr = builder.Configuration.GetConnectionString("HangfireConnectionString");
+string hangfireConnStr = builder.Configuration.GetConnectionString("HangfireConnectionString")
+	?? throw new Exception("Variable 'HangfireConnectionString' is not set.");
+
 builder.Services.AddHangfire(configuration => configuration
 	.SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
 	.UseSimpleAssemblyNameTypeSerializer()
 	.UseRecommendedSerializerSettings()
-	.UsePostgreSqlStorage(hangfireConnStr));
+	.UsePostgreSqlStorage(postgre => postgre.UseNpgsqlConnection(hangfireConnStr)));
 builder.Services.AddHangfireServer();
 
 builder.Services.AddDbServices();
@@ -44,11 +45,6 @@ builder.Services.AddAuthentication(ApiKeyDefaults.AuthenticationScheme)
 	});
 builder.Services.AddAuthorization();
 
-// builder.Services.AddSingleton<ITelegramBotClient>(provider =>
-// {
-// 	var configuration = provider.GetRequiredService<IConfiguration>();
-// 	return new TelegramBotClient(configuration["Bot:Token"]);
-// });
 builder.Services.AddSingleton<ITelegramBotAccessor, MultiTelegramBotAccessor>();
 
 builder.Services.AddOptions<SetupOptions>()
