@@ -165,7 +165,6 @@ internal sealed partial class BotUpdateHandler
         currentChat = await context.ChatInfo
             .AsNoTracking()
             .Include(ci => ci.Subscribers)
-            .ThenInclude(s => s.Producer)
             .FirstAsync(ci => ci.TelegramId == chatId, cancellationToken);
 
         StringBuilder msgToSend = new();
@@ -173,7 +172,7 @@ internal sealed partial class BotUpdateHandler
         msgToSend.Append($"Is admin: {isAdmin}\n\n");
         msgToSend.Append("Subscribers:\n");
         msgToSend.AppendJoin("\n", currentChat.Subscribers.Select((s, i) =>
-            $"{i + 1}) Subscriber id: {s.Id}\nCulture: {s.Culture}\nTime zone: {s.TimeZone}\nProducer mode: {s.Producer.Mode:G}\nProducer id: {s.Producer.Id}\nProducer enabled: {s.Producer.IsEnabled}"));
+            $"{i + 1}) Subscriber id: {s.Id}\nCulture: {s.Culture}\nTime zone: {s.TimeZone}"));
 
         try
         {
@@ -184,76 +183,6 @@ internal sealed partial class BotUpdateHandler
         {
             _logger.LogDebug(ex, "Error occurred while sending Telegram message");
         }
-    }
-
-    private async Task HandleSkipCommand(ITelegramBotClient botClient, string text, long chatId, int? messageThreadId,
-        int messageId, ElectricityDbContext context, CancellationToken cancellationToken)
-    {
-        string[] separated = text[6..].Split(' ');
-        if (separated.Length != 2)
-        {
-            try
-            {
-                await botClient.SendTextMessageAsync(chatId, "Неправильний формат повідомлення.",
-                    messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Error occurred while sending Telegram message");
-            }
-
-            return;
-        }
-
-        Producer? producer = await context.Producers
-            .AsNoTracking()
-            .Include(ci => ci.Subscribers.OrderByDescending(s => s.Id).Take(1))
-            .FirstOrDefaultAsync(
-                ci => ci.AccessTokenHash ==
-                      separated[0].ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]!), cancellationToken);
-        if (producer == null)
-        {
-            try
-            {
-                await botClient.SendTextMessageAsync(chatId, "Неправильний API ключ.",
-                    messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Error occurred while sending Telegram message");
-            }
-
-            return;
-        }
-
-        string cultureName = producer.Subscribers.FirstOrDefault() is { } subscriber
-            ? subscriber.Culture
-            : "uk-UA";
-        IFormatProvider culture = TemplateService.GetCulture(cultureName);
-
-        if (!TimeSpan.TryParse(separated[1], culture, out TimeSpan timeSpan))
-        {
-            try
-            {
-                await botClient.SendTextMessageAsync(chatId, "Не вдається прочитати тривалість з повідомлення",
-                    messageThreadId, replyToMessageId: messageId, cancellationToken: cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Error occurred while sending Telegram message");
-            }
-
-            return;
-        }
-
-        var updatedProducer = new Producer
-        {
-            Id = producer.Id,
-            SkippedUntil = DateTime.UtcNow + timeSpan
-        };
-        context.Attach(updatedProducer).Property(p => p.SkippedUntil).IsModified = true;
-
-        await context.SaveChangesAsync(CancellationToken.None);
     }
 
     private async Task HandleTokenCommand(ITelegramBotClient botClient, string text, long chatId, int? messageThreadId,

@@ -1,11 +1,24 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using PasswordGenerator;
 
 namespace ElectricityOffNotifier.AppHost.Auth;
 
 public static class AuthHelper
 {
     private const int HmacSizeBytes = 32; // 256 bits
+    
+    private static readonly Password AccessTokenGenerator = new(
+        includeLowercase: true,
+        includeUppercase: true,
+        includeNumeric: true,
+        includeSpecial: false,
+        passwordLength: 20);
+
+    public static string GenerateApiKey()
+    {
+        return AccessTokenGenerator.Next();
+    }
 
     public static string ToHmacSha256Base64String(this string input, ReadOnlySpan<byte> secretKeyBytes)
     {

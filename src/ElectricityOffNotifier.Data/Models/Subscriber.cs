@@ -18,15 +18,10 @@ public sealed class Subscriber
 	[Column("culture"), Required]
 	public string Culture { get; set; }
 	
-	[Column("producer_id")]
-	public int ProducerId { get; set; }
-	[ForeignKey(nameof(ProducerId))]
-	public Producer Producer { get; set; }
-	
-	[Column("checker_id")]
-	public int CheckerId { get; set; }
-	[ForeignKey(nameof(CheckerId))]
-	public Checker Checker { get; set; }
+	[Column("location_id")]
+	public int LocationId { get; set; }
+	[ForeignKey(nameof(LocationId))]
+	public Location Location { get; set; }
 
 	[ForeignKey(nameof(TelegramId))]
 	public ChatInfo ChatInfo { get; set; }

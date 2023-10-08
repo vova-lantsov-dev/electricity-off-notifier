@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using AspNetCore.Authentication.ApiKey;
+using ElectricityOffNotifier.AppHost.Helpers;
 using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ internal sealed class ApiKeyProvider : IApiKeyProvider
 
 	public async Task<IApiKey?> ProvideAsync(string key)
 	{
-		byte[] accessTokenHash = key.ToHmacSha256ByteArray(_configuration["Auth:SecretKey"]);
+		byte[] accessTokenHash = key.ToHmacSha256ByteArray(_configuration.GetRequiredValue("Auth:SecretKey"));
 		
 		Producer? producer = await _context.Producers
 			.AsNoTracking()
@@ -31,7 +32,7 @@ internal sealed class ApiKeyProvider : IApiKeyProvider
 		var claims = new List<Claim>
 		{
 			new(ClaimTypes.NameIdentifier, producer.Id.ToString(), ClaimValueTypes.Integer),
-			new(CustomClaimTypes.CheckerId, producer.CheckerId.ToString(), ClaimValueTypes.Integer)
+			new(CustomClaimTypes.LocationId, producer.LocationId.ToString(), ClaimValueTypes.Integer)
 		};
 		return new ApiKey(key, claims, "ElectricityChecker");
 	}

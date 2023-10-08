@@ -18,7 +18,7 @@ using TimeZoneConverter;
 namespace ElectricityOffNotifier.AppHost.Controllers;
 
 [ApiController]
-[Route("v1/[controller]")]
+[Route("v2/[controller]")]
 [Authorize]
 public sealed class SubscriberController : ControllerBase
 {
@@ -45,8 +45,8 @@ public sealed class SubscriberController : ControllerBase
         if (!validationResult.IsValid)
             return this.BadRequestExt(validationResult);
         
-        int checkerId = int.Parse(User.FindFirstValue(CustomClaimTypes.CheckerId));
-        int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+        int locationId = int.Parse(User.FindFirstValue(CustomClaimTypes.LocationId)!);
+        int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
         model.TimeZone ??= "Europe/Kiev";
         model.Culture ??= "uk-UA";
@@ -69,7 +69,7 @@ public sealed class SubscriberController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        if (await _context.Subscribers.AnyAsync(s => s.CheckerId == checkerId && s.TelegramId == model.TelegramId,
+        if (await _context.Subscribers.AnyAsync(s => s.LocationId == locationId && s.TelegramId == model.TelegramId,
                 cancellationToken))
         {
             ModelState.AddModelError(nameof(model.TelegramId),
@@ -79,9 +79,8 @@ public sealed class SubscriberController : ControllerBase
 
         var subscriber = new Subscriber
         {
-            CheckerId = checkerId,
+            LocationId = locationId,
             TelegramId = model.TelegramId,
-            ProducerId = producerId,
             Culture = model.Culture,
             TimeZone = model.TimeZone,
             TelegramThreadId = model.TelegramThreadId
@@ -90,6 +89,7 @@ public sealed class SubscriberController : ControllerBase
         ChatInfo? chatInfo = await _context.ChatInfo
             .AsNoTracking()
             .FirstOrDefaultAsync(ci => ci.TelegramId == model.TelegramId, cancellationToken);
+        
         if (chatInfo == null)
         {
             Chat targetChat;
@@ -134,13 +134,13 @@ public sealed class SubscriberController : ControllerBase
         if (subscriber == null)
             return NotFound();
 
-        int producerId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+        int locationId = int.Parse(User.FindFirstValue(CustomClaimTypes.LocationId)!);
 
-        if (subscriber.ProducerId != producerId)
+        if (subscriber.LocationId != locationId)
         {
             return StatusCode(403, new
             {
-                reason = "You are not the owner of specified subscriber so you can't delete it."
+                reason = "You are not the owner of specified subscriber, so you can't delete it."
             });
         }
 

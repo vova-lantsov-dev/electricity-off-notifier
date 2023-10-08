@@ -15,20 +15,20 @@ public sealed class TelegramNotifier : ITelegramNotifier
 		_templateService = templateService;
 	}
 
-	public async Task NotifyElectricityIsDownAsync(ITelegramBotClient botClient, SentNotification? upSince,
-		Address address, Subscriber subscriber, CancellationToken cancellationToken)
+	public async Task NotifyElectricityIsDownAsync(ITelegramBotClient botClient,
+		Location location, Subscriber subscriber, CancellationToken cancellationToken)
 	{
 		string messageToSend = _templateService.ReplaceMessageTemplate(
-			subscriber.ChatInfo.MessageDownTemplate, address, subscriber, upSince);
+			subscriber.ChatInfo.MessageDownTemplate, location, subscriber);
 		await SendMessageAsync(botClient, subscriber.TelegramId, subscriber.TelegramThreadId, messageToSend,
 			cancellationToken);
 	}
 
-	public async Task NotifyElectricityIsUpAsync(ITelegramBotClient botClient, SentNotification? downSince,
-		Address address, Subscriber subscriber, CancellationToken cancellationToken)
+	public async Task NotifyElectricityIsUpAsync(ITelegramBotClient botClient,
+		Location location, Subscriber subscriber, CancellationToken cancellationToken)
 	{
 		string messageToSend = _templateService.ReplaceMessageTemplate(
-			subscriber.ChatInfo.MessageUpTemplate, address, subscriber, downSince);
+			subscriber.ChatInfo.MessageUpTemplate, location, subscriber);
 		await SendMessageAsync(botClient, subscriber.TelegramId, subscriber.TelegramThreadId, messageToSend,
 			cancellationToken);
 	}

@@ -2,5 +2,5 @@
 
 internal static class CustomClaimTypes
 {
-	public const string CheckerId = "checkerid";
+	public const string LocationId = "locationid";
 }

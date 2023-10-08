@@ -12,21 +12,18 @@ public sealed class Producer
 	
 	[Column("name")]
 	public string? Name { get; set; }
+	
 	[Column("access_token_hash"), Required]
 	public byte[] AccessTokenHash { get; set; }
-	[Column("is_enabled")]
-	public bool IsEnabled { get; set; }
+	
 	[Column("mode"), Required]
 	public ProducerMode Mode { get; set; }
+	
 	[Column("webhook_url")]
 	public string? WebhookUrl { get; set; }
-	[Column("skipped_until", TypeName = "timestamp")]
-	public DateTime SkippedUntil { get; set; }
 
-	[Column("checker_id")]
-	public int CheckerId { get; set; }
-	[ForeignKey(nameof(CheckerId))]
-	public Checker Checker { get; set; }
-	
-	public List<Subscriber> Subscribers { get; set; }
+	[Column("location_id")]
+	public int LocationId { get; set; }
+	[ForeignKey(nameof(LocationId))]
+	public Location Location { get; set; }
 }

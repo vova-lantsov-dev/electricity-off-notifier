@@ -1,6 +1,6 @@
-﻿using System.Text.Json;
-using ElectricityOffNotifier.Data;
+﻿using ElectricityOffNotifier.Data;
 using ElectricityOffNotifier.Data.Models;
+using ElectricityOffNotifier.Data.Models.Enums;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
@@ -9,203 +9,129 @@ namespace ElectricityOffNotifier.AppHost.Services;
 
 public sealed class ElectricityCheckerManager : IElectricityCheckerManager
 {
-	private readonly IRecurringJobManager _recurringJobManager;
-	private readonly IServiceScopeFactory _scopeFactory;
-	private readonly ITelegramNotifier _telegramNotifier;
-	private readonly HttpClient _httpClient;
-	private readonly ITelegramBotAccessor _telegramBotAccessor;
-	private readonly ILogger<ElectricityCheckerManager> _logger;
+    private readonly IRecurringJobManager _recurringJobManager;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ITelegramNotifier _telegramNotifier;
+    private readonly HttpClient _httpClient;
+    private readonly ITelegramBotAccessor _telegramBotAccessor;
+    private readonly ILogger<ElectricityCheckerManager> _logger;
 
-	// A time of startup that is used to postpone the checks after startup
-	private static readonly DateTime StartupTime = DateTime.Now;
+    // A time of startup that is used to postpone the checks after startup
+    private static readonly DateTime StartupTime = DateTime.Now;
 
-	public ElectricityCheckerManager(
-		IRecurringJobManager recurringJobManager,
-		IServiceScopeFactory scopeFactory,
-		ITelegramNotifier telegramNotifier,
-		HttpClient httpClient,
-		ITelegramBotAccessor telegramBotAccessor,
-		ILogger<ElectricityCheckerManager> logger)
-	{
-		_recurringJobManager = recurringJobManager;
-		_scopeFactory = scopeFactory;
-		_telegramNotifier = telegramNotifier;
-		_httpClient = httpClient;
-		_telegramBotAccessor = telegramBotAccessor;
-		_logger = logger;
-	}
+    public ElectricityCheckerManager(
+        IRecurringJobManager recurringJobManager,
+        IServiceScopeFactory scopeFactory,
+        ITelegramNotifier telegramNotifier,
+        HttpClient httpClient,
+        ITelegramBotAccessor telegramBotAccessor,
+        ILogger<ElectricityCheckerManager> logger)
+    {
+        _recurringJobManager = recurringJobManager;
+        _scopeFactory = scopeFactory;
+        _telegramNotifier = telegramNotifier;
+        _httpClient = httpClient;
+        _telegramBotAccessor = telegramBotAccessor;
+        _logger = logger;
+    }
 
-	public void StartChecker(int checkerId, int[] webhookProducerIds)
-	{
-		_recurringJobManager.AddOrUpdate(
-			$"checker-{checkerId}",
-			() => CheckAsync(checkerId, CancellationToken.None),
-			"*/10 * * * * *");
+    public void StartChecker(int locationId)
+    {
+        _recurringJobManager.AddOrUpdate(
+            $"checker-{locationId}",
+            () => CheckAsync(locationId, CancellationToken.None),
+            "*/10 * * * * *");
+    }
 
-		foreach (int webhookProducerId in webhookProducerIds)
-			AddWebhookProducer(checkerId, webhookProducerId);
-	}
+    public void AddWebhookProducer(int locationId, int webhookProducerId)
+    {
+        _recurringJobManager.AddOrUpdate(
+            $"c{locationId}-p{webhookProducerId}-webhook",
+            () => ProcessWebhookAsync(webhookProducerId, CancellationToken.None),
+            "*/15 * * * * *");
+    }
 
-	public void AddWebhookProducer(int checkerId, int webhookProducerId)
-	{
-		_recurringJobManager.AddOrUpdate(
-			$"c{checkerId}-p{webhookProducerId}-webhook",
-			() => ProcessWebhookAsync(webhookProducerId, CancellationToken.None),
-			"*/15 * * * * *");
-	}
+    public async Task CheckAsync(int locationId, CancellationToken cancellationToken)
+    {
+        if (DateTime.Now - StartupTime < TimeSpan.FromMinutes(1))
+            return;
 
-	public async Task CheckAsync(int checkerId, CancellationToken cancellationToken)
-	{
-		if (DateTime.Now - StartupTime < TimeSpan.FromMinutes(1))
-			return;
+        await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
-		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
-		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
+        Location location = await dbContext.Locations
+            .AsNoTracking()
+            .Include(loc => loc.City)
+            .Include(loc => loc.Producers)
+            .Include(loc => loc.Subscribers)
+            .ThenInclude(subscriber => subscriber.ChatInfo)
+            .FirstAsync(c => c.Id == locationId, cancellationToken);
 
-		var checker = await dbContext.Checkers
-			.AsNoTracking()
-			.Include(c => c.Entries.OrderByDescending(e => e.DateTime).Take(1))
-			.Include(c => c.Address)
-			.ThenInclude(a => a.City)
-			.Include(c => c.Producers)
-			.FirstAsync(c => c.Id == checkerId, cancellationToken);
+        DateTime now = DateTime.UtcNow;
+        bool alreadySent = true;
 
-		_logger.LogDebug("Checker {CheckerId} has {EntriesCount} entries", checkerId, checker.Entries.Count);
+        if (alreadySent)
+        {
+            _logger.LogDebug("Nothing changed for location {LocationId}, skipping...", locationId);
+            
+            return;
+        }
 
-		if (checker.Entries.Count < 1)
-			return;
+        var updatedLocation = new Location
+        {
+            Id = locationId,
+            LastNotifiedAt = DateTime.UtcNow
+        };
+        dbContext.Locations.Attach(updatedLocation).Property(loc => loc.LastNotifiedAt).IsModified = true;
 
-		{
-			DateTime now = DateTime.UtcNow;
-			if (checker.Producers.Count > 0 && checker.Producers.All(p => p.SkippedUntil > now))
-			{
-				_logger.LogDebug("Checker {CheckerId} has only skipped producers", checkerId);
-				return;
-			}
-		}
+        await dbContext.SaveChangesAsync(CancellationToken.None);
 
-		async Task LoadSubscribersAsync()
-		{
-			checker.Subscribers = await dbContext.Subscribers
-				.AsNoTracking()
-				.Include(s => s.ChatInfo)
-				.Where(s => s.CheckerId == checkerId)
-				.ToListAsync(cancellationToken);
-		}
+        // Load the subscribers that need to be notified about availability status change
+        if (location.Subscribers.Count == 0)
+        {
+            _logger.LogDebug("There are no subscribers for location {LocationId}, skipping broadcasting...", locationId);
+            return;
+        }
 
-		// Find a last notification sent to the Telegram chat
-		SentNotification? lastNotification =
-			await GetLastNotificationAsync(dbContext, checkerId, cancellationToken);
+        // Get a method delegate that should be invoked to notify about electricity status
+        Func<ITelegramBotClient, Location, Subscriber, CancellationToken, Task> action = location.CurrentStatus == LocationStatus.Offline
+            ? _telegramNotifier.NotifyElectricityIsDownAsync
+            : _telegramNotifier.NotifyElectricityIsUpAsync;
 
-		if (_logger.IsEnabled(LogLevel.Trace))
-		{
-			string lastNotificationJson = JsonSerializer.Serialize(lastNotification);
-			_logger.LogTrace("Last notification for checker {CheckerId} is:\n{JsonValue}", checkerId,
-				lastNotificationJson);
-		}
+        // Notify every subscriber about electricity status
+        foreach (Subscriber subscriber in location.Subscribers)
+        {
+            _logger.LogDebug("Sending a Telegram notification about {Status:G} status to subscriber {SubscriberId}",
+                location.CurrentStatus, subscriber.Id);
 
-		// Did we already sent a Telegram notification about current status?
-		bool isDown = DateTime.UtcNow - checker.Entries[0].DateTime > TimeSpan.FromSeconds(45);
-		_logger.LogDebug("Current status is {Status} for checker {CheckerId}",
-			isDown ? "Down" : "Up", checkerId);
+            ITelegramBotClient botClient =
+                await _telegramBotAccessor.GetBotClientAsync(subscriber.ChatInfo.BotTokenOverride, cancellationToken);
+            await action(botClient, location, subscriber, cancellationToken);
+        }
+    }
 
-		if (lastNotification is { IsUpNotification: true } && !isDown)
-		{
-			_logger.LogDebug(
-				"Last notification and current statuses are both Up for checker {CheckerId}, skipping...",
-				checkerId);
-			return;
-		}
+    public async Task ProcessWebhookAsync(int producerId, CancellationToken cancellationToken)
+    {
+        await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
-		if (lastNotification is { IsUpNotification: false } && isDown)
-		{
-			_logger.LogDebug(
-				"Last notification and current statuses are both Down for checker {CheckerId}, skipping...",
-				checkerId);
-			return;
-		}
+        Producer producer = await dbContext.Producers
+            .AsNoTracking()
+            .FirstAsync(p => p.Id == producerId, cancellationToken);
 
-		// Insert a new sent notification entry
-		await SetLastNotificationAsync(dbContext, checkerId, !isDown, cancellationToken);
+        using HttpResponseMessage response = await _httpClient.GetAsync(producer.WebhookUrl!,
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
-		// Load the subscribers that need to be notified about electricity status
-		await LoadSubscribersAsync();
-		if (checker.Subscribers.Count == 0)
-		{
-			_logger.LogDebug("There are no subscribers for checker {CheckerId}, skipping...", checkerId);
-			return;
-		}
+        if (response.IsSuccessStatusCode)
+        {
+            var location = new Location
+            {
+                Id = producer.LocationId,
+                LastSeenAt = DateTime.UtcNow
+            };
+            dbContext.Locations.Attach(location).Property(loc => loc.LastSeenAt).IsModified = true;
 
-		// Get a method delegate that should be invoked to notify about electricity status
-		Func<ITelegramBotClient, SentNotification?, Address, Subscriber, CancellationToken, Task> action = isDown
-			? _telegramNotifier.NotifyElectricityIsDownAsync
-			: _telegramNotifier.NotifyElectricityIsUpAsync;
-
-		// Notify every subscriber about electricity status
-		foreach (Subscriber subscriber in checker.Subscribers)
-		{
-			_logger.LogDebug("Sending a Telegram notification about {Status} status to subscriber {SubscriberId}",
-				isDown ? "Down" : "Up", subscriber.Id);
-			
-			ITelegramBotClient botClient =
-				await _telegramBotAccessor.GetBotClientAsync(subscriber.ChatInfo.BotTokenOverride, cancellationToken);
-			await action(botClient, lastNotification, checker.Address, subscriber, cancellationToken);
-		}
-	}
-
-	public async Task ProcessWebhookAsync(int producerId, CancellationToken cancellationToken)
-	{
-		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
-		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
-
-		Producer producer = await dbContext.Producers
-			.AsNoTracking()
-			.FirstAsync(p => p.Id == producerId, cancellationToken);
-		
-		if (!producer.IsEnabled)
-			return;
-
-		using HttpResponseMessage response = await _httpClient.GetAsync(producer.WebhookUrl!,
-			HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-		
-		if (response.IsSuccessStatusCode)
-		{
-			var checkerEntry = new CheckerEntry
-			{
-				DateTime = DateTime.UtcNow,
-				CheckerId = producer.CheckerId
-			};
-			dbContext.CheckerEntries.Add(checkerEntry);
-	
-			await dbContext.SaveChangesAsync(cancellationToken);
-		}
-	}
-	
-	private static async Task<SentNotification?> GetLastNotificationAsync(
-		ElectricityDbContext context,
-		int checkerId,
-		CancellationToken cancellationToken)
-	{
-		SentNotification? sentNotification = await context.SentNotifications
-			.AsNoTracking()
-			.OrderByDescending(sn => sn.DateTime)
-			.FirstOrDefaultAsync(sn => sn.CheckerId == checkerId, cancellationToken);
-		return sentNotification;
-	}
-
-	private static async Task SetLastNotificationAsync(
-		ElectricityDbContext context,
-		int checkerId,
-		bool isUpNotification,
-		CancellationToken cancellationToken)
-	{
-		var lastNotification = new SentNotification
-		{
-			CheckerId = checkerId,
-			DateTime = DateTime.UtcNow,
-			IsUpNotification = isUpNotification
-		};
-		context.SentNotifications.Add(lastNotification);
-		await context.SaveChangesAsync(cancellationToken);
-	}
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
 }

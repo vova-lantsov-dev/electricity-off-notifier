@@ -167,22 +167,6 @@ internal sealed partial class BotUpdateHandler : IUpdateHandler
             {
                 Message:
                 {
-                    Text: { Length: > 7 } text,
-                    MessageId: var messageId,
-                    MessageThreadId: var messageThreadId
-                }
-            }
-            when text.StartsWith("!skip ") && isAdmin:
-            {
-                await HandleSkipCommand(botClient, text, chatId, messageThreadId, messageId, context,
-                    cancellationToken);
-                break;
-            }
-
-            case
-            {
-                Message:
-                {
                     Text: { Length: > 8 } text,
                     MessageId: var messageId,
                     MessageThreadId: var messageThreadId,
