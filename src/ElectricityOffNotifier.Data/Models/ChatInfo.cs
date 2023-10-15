@@ -11,10 +11,13 @@ public sealed class ChatInfo
     
     [Required, Column("name")]
     public string Name { get; set; }
+    
     [Required, Column("message_up_template")]
     public string MessageUpTemplate { get; set; }
+    
     [Required, Column("message_down_template")]
     public string MessageDownTemplate { get; set; }
+    
     [Encrypted, Column("bot_token_override")]
     public byte[]? BotTokenOverride { get; set; }
     

@@ -22,15 +22,14 @@ public sealed class HangfireStartupService : IHostedService
 		await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
 		var dbContext = scope.ServiceProvider.GetRequiredService<ElectricityDbContext>();
 
-		var checkers = await dbContext.Checkers
+		var checkers = await dbContext.Locations
 			.Include(c => c.Producers)
 			.Select(c => new { c.Id, c.Producers })
 			.ToListAsync(cancellationToken: cancellationToken);
 
 		foreach (var checker in checkers)
 		{
-			_checkerManager.StartChecker(checker.Id,
-				checker.Producers.Where(p => p.Mode == ProducerMode.Webhook).Select(p => p.Id).ToArray());
+			_checkerManager.StartChecker(checker.Id);
 		}
 	}
 

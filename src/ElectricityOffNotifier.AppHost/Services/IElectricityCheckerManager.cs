@@ -2,7 +2,7 @@
 
 public interface IElectricityCheckerManager
 {
-	void StartChecker(int checkerId, int[] webhookProducerIds);
+	void StartChecker(int locationId);
 
-	void AddWebhookProducer(int checkerId, int webhookProducerId);
+	void AddWebhookProducer(int locationId, int webhookProducerId);
 }

@@ -19,25 +19,28 @@ internal sealed class TemplateService : ITemplateService
         })
         .Build();
     
-    public string ReplaceMessageTemplate(string input, Address address, Subscriber subscriber, SentNotification? since)
+    public string ReplaceMessageTemplate(string input, Location location, Subscriber subscriber)
     {
         IFormatProvider culture = GetCulture(subscriber.Culture);
         
         var renderData = new Dictionary<string, object>
         {
-            ["Address"] = $"{address.City.Name}, {address.City.Region}".TrimEnd(' ', ',') +
-                          $", {address.Street} {address.BuildingNo}",
             ["NowDate"] = GetLocalTime(DateTime.UtcNow, subscriber.TimeZone).ToString("g", culture)
         };
 
-        if (since != null)
+        if (location.LastSeenAt != default)
         {
             renderData["SinceRegion"] = true;
-            renderData["SinceDate"] = GetLocalTime(since.DateTime, subscriber.TimeZone).ToString("g", culture);
+            renderData["SinceDate"] = GetLocalTime(location.LastNotifiedAt, subscriber.TimeZone).ToString("g", culture);
             
-            TimeSpan duration = DateTime.UtcNow - since.DateTime;
+            TimeSpan duration = DateTime.UtcNow - location.LastNotifiedAt;
             renderData["DurationHours"] = (int)duration.TotalHours;
             renderData["DurationMinutes"] = duration.Minutes.ToString("D2");
+        }
+
+        if (location.FullAddress != null)
+        {
+            renderData["Address"] = location.FullAddress;
         }
 
         return Stubble.Render(input, renderData);

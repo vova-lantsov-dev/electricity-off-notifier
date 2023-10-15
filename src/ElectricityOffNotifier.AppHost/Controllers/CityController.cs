@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ElectricityOffNotifier.AppHost.Controllers;
 
 [ApiController]
-[Route("v1/[controller]")]
+[Route("v2/[controller]")]
 public sealed class CityController : ControllerBase
 {
 	private readonly ElectricityDbContext _context;

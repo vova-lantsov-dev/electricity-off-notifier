@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ElectricityOffNotifier.AppHost.Models;
 
 public sealed record ProducerRegisterModel(
-    int AddressId,
+    int LocationId,
     [property: JsonConverter(typeof(JsonStringEnumConverter))]
     ProducerMode Mode,
     string? WebhookUrl,
@@ -17,15 +17,15 @@ public sealed class ProducerRegisterModelValidator : AbstractValidator<ProducerR
 {
     public ProducerRegisterModelValidator(ElectricityDbContext context)
     {
-        // Validate address identifier
-        RuleFor(m => m.AddressId)
+        // Validate location identifier
+        RuleFor(m => m.LocationId)
             .Cascade(CascadeMode.Stop)
             .GreaterThanOrEqualTo(1)
-            .MustAsync(async (addressId, cancellationToken) =>
-                await context.Addresses.AnyAsync(a => a.Id == addressId, cancellationToken))
-            .WithMessage("Address with specified id was not found");
+            .MustAsync((locationId, cancellationToken) =>
+                context.Locations.AnyAsync(c => c.Id == locationId, cancellationToken))
+            .WithMessage("Location with specified id was not found");
         
-        // Validate mode
+        // Validate producer mode
         RuleFor(m => m.Mode).IsInEnum();
         
         // Validate webhook URL

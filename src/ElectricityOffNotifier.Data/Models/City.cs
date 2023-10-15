@@ -12,9 +12,7 @@ public sealed class City
 	
 	[Column("name"), Required]
 	public string Name { get; set; }
+	
 	[Column("region"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public string? Region { get; set; }
-	
-	[JsonIgnore]
-	public List<Address> Addresses { get; set; }
 }

@@ -4,8 +4,7 @@ namespace ElectricityOffNotifier.AppHost.Services;
 
 public interface ITemplateService
 {
-    string ReplaceMessageTemplate(string input, Address address, Subscriber subscriber,
-        SentNotification? since);
+    string ReplaceMessageTemplate(string input, Location location, Subscriber subscriber);
 
     bool ValidateMessageTemplate(string input);
 }
